@@ -53,6 +53,9 @@ Root: `~/Library/Application Support/SmartTranscript`
 - Sync/team dictionaries.
 - Speaker diarization and timestamps.
 
+## Improvement Backlog
+- Show a clear processing state and elapsed timer while polish is running.
+
 ## Build/Run
 - `swift build`
 - `swift run SmartTranscript`
