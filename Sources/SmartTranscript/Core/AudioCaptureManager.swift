@@ -9,7 +9,7 @@ enum MicrophonePermissionState {
 
 final class AudioCaptureManager {
     private let engine = AVAudioEngine()
-    private var audioFile: AVAudioFile?
+    private var wavWriter: WavFileWriter?
     private var converter: AVAudioConverter?
 
     var onLevelUpdate: ((Float) -> Void)?
@@ -49,7 +49,11 @@ final class AudioCaptureManager {
         }
 
         converter = AVAudioConverter(from: inputFormat, to: targetFormat)
-        audioFile = try AVAudioFile(forWriting: tempURL, settings: targetFormat.settings, commonFormat: .pcmFormatInt16, interleaved: true)
+        wavWriter = try WavFileWriter(
+            url: tempURL,
+            sampleRate: Int(targetFormat.sampleRate),
+            channels: Int(targetFormat.channelCount)
+        )
 
         inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
@@ -64,7 +68,8 @@ final class AudioCaptureManager {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
 
-        audioFile = nil
+        try? wavWriter?.close()
+        wavWriter = nil
         converter = nil
 
         onLevelUpdate?(0)
@@ -75,7 +80,7 @@ final class AudioCaptureManager {
         onLevelUpdate?(level)
 
         guard let converter = converter,
-              let audioFile = audioFile else {
+              let wavWriter = wavWriter else {
             return
         }
 
@@ -120,7 +125,7 @@ final class AudioCaptureManager {
         }
 
         if outputBuffer.frameLength > 0 {
-            try? audioFile.write(from: outputBuffer)
+            try? wavWriter.append(from: outputBuffer)
         }
     }
 
@@ -158,5 +163,84 @@ final class AudioCaptureManager {
 
         let mean = sum / Float(frameLength * channelCount)
         return sqrt(mean)
+    }
+}
+
+private final class WavFileWriter {
+    private static let headerSize = 44
+    private static let bitsPerSample: UInt16 = 16
+
+    private let handle: FileHandle
+    private let sampleRate: UInt32
+    private let channels: UInt16
+    private var dataBytesWritten: UInt32 = 0
+
+    init(url: URL, sampleRate: Int, channels: Int) throws {
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
+
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        self.handle = try FileHandle(forWritingTo: url)
+        self.sampleRate = UInt32(sampleRate)
+        self.channels = UInt16(channels)
+
+        try writeHeader(dataSize: 0)
+    }
+
+    func append(from buffer: AVAudioPCMBuffer) throws {
+        let audioBuffer = buffer.audioBufferList.pointee.mBuffers
+        guard let dataPointer = audioBuffer.mData else {
+            return
+        }
+
+        let byteCount = Int(audioBuffer.mDataByteSize)
+        guard byteCount > 0 else {
+            return
+        }
+
+        let data = Data(bytes: dataPointer, count: byteCount)
+        try handle.write(contentsOf: data)
+        dataBytesWritten &+= UInt32(byteCount)
+    }
+
+    func close() throws {
+        try writeHeader(dataSize: dataBytesWritten)
+        try handle.close()
+    }
+
+    private func writeHeader(dataSize: UInt32) throws {
+        let byteRate = sampleRate * UInt32(channels) * UInt32(Self.bitsPerSample / 8)
+        let blockAlign = channels * (Self.bitsPerSample / 8)
+        let riffChunkSize = UInt32(Self.headerSize - 8) &+ dataSize
+
+        var header = Data()
+        header.append("RIFF".data(using: .ascii)!)
+        header.append(littleEndianBytes(riffChunkSize))
+        header.append("WAVE".data(using: .ascii)!)
+        header.append("fmt ".data(using: .ascii)!)
+        header.append(littleEndianBytes(UInt32(16)))
+        header.append(littleEndianBytes(UInt16(1)))
+        header.append(littleEndianBytes(channels))
+        header.append(littleEndianBytes(sampleRate))
+        header.append(littleEndianBytes(byteRate))
+        header.append(littleEndianBytes(blockAlign))
+        header.append(littleEndianBytes(Self.bitsPerSample))
+        header.append("data".data(using: .ascii)!)
+        header.append(littleEndianBytes(dataSize))
+
+        try handle.seek(toOffset: 0)
+        try handle.write(contentsOf: header)
+        try handle.seekToEnd()
+    }
+
+    private func littleEndianBytes(_ value: UInt16) -> Data {
+        var v = value.littleEndian
+        return withUnsafeBytes(of: &v) { Data($0) }
+    }
+
+    private func littleEndianBytes(_ value: UInt32) -> Data {
+        var v = value.littleEndian
+        return withUnsafeBytes(of: &v) { Data($0) }
     }
 }

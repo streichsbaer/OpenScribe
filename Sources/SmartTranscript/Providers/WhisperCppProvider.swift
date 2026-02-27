@@ -31,8 +31,10 @@ final class WhisperCppProvider: TranscriptionProvider {
             "-nt"
         ]
 
-        if let language, !language.isEmpty, language.lowercased() != "auto" {
-            args.append(contentsOf: ["-l", language])
+        if let language, !language.isEmpty {
+            args.append(contentsOf: ["-l", language.lowercased() == "auto" ? "auto" : language])
+        } else {
+            args.append(contentsOf: ["-l", "auto"])
         }
 
         let process = Process()
@@ -54,7 +56,11 @@ final class WhisperCppProvider: TranscriptionProvider {
             throw ProviderError.processFailed(stderr.trimmingCharacters(in: .whitespacesAndNewlines))
         }
 
-        guard let text = try? String(contentsOf: outputFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else {
+        guard let text = try? String(contentsOf: outputFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty else {
+            if !stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                throw ProviderError.processFailed(stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+            }
             throw ProviderError.invalidResponse
         }
 
