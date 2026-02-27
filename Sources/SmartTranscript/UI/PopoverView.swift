@@ -5,6 +5,7 @@ import SwiftUI
 struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
+    @State private var expandedTextPanels = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -133,16 +134,28 @@ struct PopoverView: View {
     private var textSection: some View {
         card(title: "Text") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Raw transcript")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .center, spacing: 8) {
+                    Text("Raw transcript")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button(expandedTextPanels ? "Compact" : "Expand") {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            expandedTextPanels.toggle()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
 
                 TextEditor(text: Binding(
                     get: { shell.rawTranscript },
                     set: { shell.updateRawTranscriptFromEditor($0) }
                 ))
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 130)
+                .font(.body)
+                .frame(height: textPanelHeight)
                 .padding(8)
                 .background(Color(NSColor.textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -163,10 +176,11 @@ struct PopoverView: View {
 
                 ScrollView {
                     Text(polishedBodyText)
+                        .font(.body)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
                 }
-                .frame(minHeight: 170)
+                .frame(height: textPanelHeight)
                 .padding(8)
                 .background(Color(NSColor.textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -317,6 +331,10 @@ struct PopoverView: View {
         let minutes = safeSeconds / 60
         let remainder = safeSeconds % 60
         return String(format: "%02d:%02d", minutes, remainder)
+    }
+
+    private var textPanelHeight: CGFloat {
+        expandedTextPanels ? 280 : 170
     }
 }
 
