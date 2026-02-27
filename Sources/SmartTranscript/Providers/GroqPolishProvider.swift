@@ -20,9 +20,10 @@ final class GroqPolishProvider: PolishProvider {
             systemPrompt: "You convert speech transcripts into clean Markdown. Return Markdown only.",
             userPrompt: makePolishUserPrompt(rawText: rawText, rulesMarkdown: rulesMarkdown)
         )
+        let polished = sanitizePolishedOutput(unwrapCodeBlockIfNeeded(content), rawText: rawText)
 
         return PolishResult(
-            markdown: unwrapCodeBlockIfNeeded(content),
+            markdown: polished,
             providerId: id,
             model: model,
             latencyMs: Int(Date().timeIntervalSince(start) * 1_000)

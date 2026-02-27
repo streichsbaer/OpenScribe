@@ -1,4 +1,5 @@
 import AVFoundation
+import Foundation
 import SwiftUI
 
 struct PopoverView: View {
@@ -68,6 +69,10 @@ struct PopoverView: View {
             Text(permissionText)
                 .font(.caption)
                 .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
+
+            Text(shell.menubarIconDebug)
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
     }
 
@@ -131,8 +136,18 @@ struct PopoverView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
+            if shell.sessionState == .polishing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Polishing... \(formattedDuration(shell.polishElapsedSeconds))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             ScrollView {
-                Text(shell.polishedTranscript.isEmpty ? "Polished transcript will appear here." : shell.polishedTranscript)
+                Text(polishedBodyText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
@@ -169,6 +184,22 @@ struct PopoverView: View {
 
     private func openSettings() {
         shell.openSettingsWindow()
+    }
+
+    private var polishedBodyText: String {
+        if !shell.polishedTranscript.isEmpty {
+            return shell.polishedTranscript
+        }
+        if shell.sessionState == .polishing {
+            return "Polishing in progress..."
+        }
+        return "Polished transcript will appear here."
+    }
+
+    private func formattedDuration(_ seconds: Int) -> String {
+        let minutes = max(0, seconds) / 60
+        let remainder = max(0, seconds) % 60
+        return String(format: "%02d:%02d", minutes, remainder)
     }
 }
 

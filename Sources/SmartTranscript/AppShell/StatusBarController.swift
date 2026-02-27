@@ -20,12 +20,16 @@ final class StatusBarController: NSObject {
     private var blinkPhase = false
     private var iconState: MicIconState = .idle
     private var currentMeterLevel: Float = 0
+    private var smoothedMeterLevel: Float = 0
     private var currentSessionState: SessionState = .idle
     private var currentPermissionState: MicrophonePermissionState = .undetermined
     private var lastActiveSignalAt: Date?
+    private var isSpeechActive = false
 
-    private let signalThreshold: Float = 0.01
-    private let noAudioTimeoutSeconds: TimeInterval = 2.5
+    private let smoothingAlpha: Float = 0.22
+    private let speechOnThreshold: Float = 0.020
+    private let speechOffThreshold: Float = 0.012
+    private let noAudioTimeoutSeconds: TimeInterval = 1.4
 
     init(shell: AppShell) {
         self.shell = shell
@@ -107,8 +111,22 @@ final class StatusBarController: NSObject {
             .sink { [weak self] level in
                 guard let self else { return }
                 currentMeterLevel = level
-                if currentSessionState == .recording, level >= signalThreshold {
-                    lastActiveSignalAt = Date()
+                smoothedMeterLevel = (smoothedMeterLevel == 0)
+                    ? level
+                    : ((1 - smoothingAlpha) * smoothedMeterLevel + smoothingAlpha * level)
+
+                if currentSessionState == .recording {
+                    if isSpeechActive {
+                        if smoothedMeterLevel < speechOffThreshold {
+                            isSpeechActive = false
+                        }
+                    } else if smoothedMeterLevel > speechOnThreshold {
+                        isSpeechActive = true
+                    }
+
+                    if isSpeechActive {
+                        lastActiveSignalAt = Date()
+                    }
                 }
                 reevaluateMicIconState()
             }
@@ -120,8 +138,12 @@ final class StatusBarController: NSObject {
                 guard let self else { return }
                 if currentSessionState != .recording, state == .recording {
                     lastActiveSignalAt = Date()
+                    smoothedMeterLevel = 0
+                    isSpeechActive = false
                 } else if state != .recording {
                     lastActiveSignalAt = nil
+                    smoothedMeterLevel = 0
+                    isSpeechActive = false
                 }
                 currentSessionState = state
                 reevaluateMicIconState()
@@ -152,27 +174,33 @@ final class StatusBarController: NSObject {
     }
 
     private func reevaluateMicIconState() {
+        var silenceDuration: TimeInterval = 0
+
         if currentSessionState != .recording {
             iconState = .idle
             updateIconAppearance()
+            publishDebug(silenceDuration: silenceDuration)
             return
         }
 
         if currentPermissionState != .authorized {
             iconState = .noAudio
             updateIconAppearance()
+            publishDebug(silenceDuration: silenceDuration)
             return
         }
 
-        if currentMeterLevel >= signalThreshold {
+        if isSpeechActive {
             iconState = .working
             updateIconAppearance()
+            publishDebug(silenceDuration: silenceDuration)
             return
         }
 
-        let silentDuration = Date().timeIntervalSince(lastActiveSignalAt ?? .distantPast)
-        iconState = silentDuration >= noAudioTimeoutSeconds ? .noAudio : .paused
+        silenceDuration = Date().timeIntervalSince(lastActiveSignalAt ?? .distantPast)
+        iconState = silenceDuration >= noAudioTimeoutSeconds ? .noAudio : .paused
         updateIconAppearance()
+        publishDebug(silenceDuration: silenceDuration)
     }
 
     private func updateIconAppearance() {
@@ -197,5 +225,29 @@ final class StatusBarController: NSObject {
         image.isTemplate = tintColor == nil
         button.image = image
         button.contentTintColor = tintColor
+    }
+
+    private func publishDebug(silenceDuration: TimeInterval) {
+        shell.menubarIconDebug = String(
+            format: "icon=%@ raw=%.3f smooth=%.3f speech=%@ silence=%.1fs",
+            iconStateLabel(iconState),
+            currentMeterLevel,
+            smoothedMeterLevel,
+            isSpeechActive ? "yes" : "no",
+            max(0, silenceDuration)
+        )
+    }
+
+    private func iconStateLabel(_ state: MicIconState) -> String {
+        switch state {
+        case .idle:
+            return "idle"
+        case .working:
+            return "working"
+        case .paused:
+            return "paused"
+        case .noAudio:
+            return "no-audio"
+        }
     }
 }

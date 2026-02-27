@@ -20,6 +20,8 @@ final class AppShell: ObservableObject {
     @Published var openAIKeyInput: String = ""
     @Published var groqKeyInput: String = ""
     @Published var latestPolishedTranscript: String = ""
+    @Published var menubarIconDebug: String = "icon=idle"
+    @Published var polishElapsedSeconds: Int = 0
 
     var openSettingsWindowHandler: (() -> Void)?
 
@@ -37,6 +39,8 @@ final class AppShell: ObservableObject {
     private let transcriptionPipeline: TranscriptionPipeline
     private let polishPipeline: PolishPipeline
     private var hasPromptedForAccessibilityPermission = false
+    private var polishTimer: Timer?
+    private var polishStartedAt: Date?
 
     init() {
         let resolvedLayout = (try? DirectoryLayout.resolve()) ?? {
@@ -176,6 +180,8 @@ final class AppShell: ObservableObject {
             return
         }
 
+        endPolishProgressTracking()
+
         permissionState = audioCapture.permissionState()
         if permissionState == .undetermined {
             let granted = await audioCapture.requestPermission()
@@ -232,6 +238,7 @@ final class AppShell: ObservableObject {
 
             do {
                 sessionState = .polishing
+                beginPolishProgressTracking()
                 try sessionManager.transition(&session, to: .polishing, details: "Running polish")
 
                 let rules = try rulesStore.load()
@@ -251,10 +258,12 @@ final class AppShell: ObservableObject {
                 } else {
                     statusMessage = "Transcription complete"
                 }
+                endPolishProgressTracking()
             } catch {
                 polishedTranscript = ""
                 statusMessage = "Raw transcript ready. Polish failed or needs API key."
                 lastError = error.localizedDescription
+                endPolishProgressTracking()
             }
 
             try sessionManager.transition(&session, to: .completed, details: "Session complete")
@@ -266,6 +275,7 @@ final class AppShell: ObservableObject {
             lastError = error.localizedDescription
             sessionState = .failed
             statusMessage = "Session failed"
+            endPolishProgressTracking()
         }
     }
 
@@ -279,6 +289,7 @@ final class AppShell: ObservableObject {
 
             do {
                 self.sessionState = .polishing
+                self.beginPolishProgressTracking()
                 try self.sessionManager.transition(&session, to: .polishing, details: "Retry polish")
                 let rules = try self.rulesStore.load()
                 let polished = try await self.polishPipeline.run(
@@ -298,10 +309,12 @@ final class AppShell: ObservableObject {
                     Clipboard.copy(text: polished.markdown)
                 }
                 self.statusMessage = "Polish retry complete"
+                self.endPolishProgressTracking()
             } catch {
                 self.lastError = error.localizedDescription
                 self.statusMessage = "Polish retry failed"
                 self.currentSession = session
+                self.endPolishProgressTracking()
             }
         }
     }
@@ -407,5 +420,35 @@ final class AppShell: ObservableObject {
                 self.statusMessage = "Latest polished transcript copied"
             }
         }
+    }
+
+    private func beginPolishProgressTracking() {
+        polishTimer?.invalidate()
+        polishStartedAt = Date()
+        polishElapsedSeconds = 0
+
+        polishTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updatePolishElapsedSeconds()
+            }
+        }
+        if let polishTimer {
+            RunLoop.main.add(polishTimer, forMode: .common)
+        }
+    }
+
+    private func endPolishProgressTracking() {
+        polishTimer?.invalidate()
+        polishTimer = nil
+        polishStartedAt = nil
+        polishElapsedSeconds = 0
+    }
+
+    private func updatePolishElapsedSeconds() {
+        guard let started = polishStartedAt else {
+            polishElapsedSeconds = 0
+            return
+        }
+        polishElapsedSeconds = max(0, Int(Date().timeIntervalSince(started)))
     }
 }
