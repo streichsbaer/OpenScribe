@@ -159,7 +159,7 @@ struct PopoverView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             HStack {
-                Button("Copy (Ctrl+Option+V)") {
+                Button("Copy Latest (Ctrl+Option+V)") {
                     shell.copyLatestPolished()
                 }
                 .buttonStyle(.bordered)

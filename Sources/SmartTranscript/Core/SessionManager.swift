@@ -137,6 +137,45 @@ final class SessionManager {
         return recovered
     }
 
+    func loadLatestPolishedTranscript() -> String? {
+        let dayFolders = (try? fileManager.contentsOfDirectory(
+            at: layout.recordings,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+
+        for dayFolder in dayFolders.sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+            guard (try? dayFolder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+                continue
+            }
+
+            let sessions = (try? fileManager.contentsOfDirectory(
+                at: dayFolder,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            )) ?? []
+
+            for sessionFolder in sessions.sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+                guard (try? sessionFolder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+                    continue
+                }
+
+                let polishedURL = sessionFolder.appendingPathComponent("polished.md")
+                guard fileManager.fileExists(atPath: polishedURL.path),
+                      let value = try? String(contentsOf: polishedURL, encoding: .utf8) else {
+                    continue
+                }
+
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    return trimmed
+                }
+            }
+        }
+
+        return nil
+    }
+
     private func persistMetadata(_ session: SessionContext) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

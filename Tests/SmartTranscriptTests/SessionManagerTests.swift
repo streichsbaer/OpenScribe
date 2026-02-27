@@ -44,6 +44,21 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertTrue(metadata.stateTransitions.contains(where: { $0.state == .transcribing }))
     }
 
+    func testLoadLatestPolishedTranscriptReturnsNewestNonEmptyValue() throws {
+        let layout = try makeTempLayout()
+        let manager = SessionManager(layout: layout)
+
+        var old = try manager.startSession(settings: .default, inputDeviceName: nil)
+        try manager.writePolished("older polished text", for: &old)
+
+        Thread.sleep(forTimeInterval: 1.1)
+
+        var newer = try manager.startSession(settings: .default, inputDeviceName: nil)
+        try manager.writePolished("newest polished text", for: &newer)
+
+        XCTAssertEqual(manager.loadLatestPolishedTranscript(), "newest polished text")
+    }
+
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("SmartTranscriptTests-\(UUID().uuidString)", isDirectory: true)

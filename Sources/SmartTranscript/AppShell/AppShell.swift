@@ -22,6 +22,7 @@ final class AppShell: ObservableObject {
 
     @Published var openAIKeyInput: String = ""
     @Published var groqKeyInput: String = ""
+    @Published var latestPolishedTranscript: String = ""
 
     var openSettingsWindowHandler: (() -> Void)?
 
@@ -88,6 +89,8 @@ final class AppShell: ObservableObject {
             statusMessage = "Found \(dangling.count) unfinished recording file(s)."
         }
 
+        latestPolishedTranscript = sessionManager.loadLatestPolishedTranscript() ?? ""
+
         registerHotkeys()
     }
 
@@ -149,13 +152,14 @@ final class AppShell: ObservableObject {
     }
 
     func copyLatestPolished() {
-        guard !polishedTranscript.isEmpty else {
-            statusMessage = "No polished transcript available"
+        let candidate = !polishedTranscript.isEmpty ? polishedTranscript : latestPolishedTranscript
+        guard !candidate.isEmpty else {
+            statusMessage = "No polished transcript available yet"
             return
         }
 
-        Clipboard.copy(text: polishedTranscript)
-        statusMessage = "Polished transcript copied"
+        Clipboard.copy(text: candidate)
+        statusMessage = "Latest polished transcript copied"
     }
 
     func openSettingsWindow() {
@@ -244,6 +248,7 @@ final class AppShell: ObservableObject {
                 )
 
                 polishedTranscript = polished.markdown
+                latestPolishedTranscript = polished.markdown
                 try sessionManager.writePolished(polished.markdown, for: &session)
 
                 if settings.copyOnComplete {
@@ -289,6 +294,7 @@ final class AppShell: ObservableObject {
                 )
 
                 self.polishedTranscript = polished.markdown
+                self.latestPolishedTranscript = polished.markdown
                 try self.sessionManager.writePolished(polished.markdown, for: &session)
                 try self.sessionManager.transition(&session, to: .completed, details: "Polish retry complete")
                 self.sessionState = .completed
