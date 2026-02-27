@@ -26,11 +26,6 @@ struct PolishResult: Codable {
     let latencyMs: Int
 }
 
-struct RulesDiffResult {
-    let unifiedDiff: String
-    let summary: String
-}
-
 struct SessionStateTransition: Codable {
     let state: SessionState
     let timestamp: Date
@@ -57,7 +52,6 @@ struct SessionMetadata: Codable {
     var audioFilePath: String
     var rawFilePath: String
     var polishedFilePath: String
-    var feedbackLogPath: String
 }
 
 struct SessionPaths {
@@ -67,7 +61,6 @@ struct SessionPaths {
     let metadataURL: URL
     let rawURL: URL
     let polishedURL: URL
-    let feedbackLogURL: URL
 }
 
 struct SessionContext {
@@ -134,15 +127,6 @@ struct ModelAsset: Codable, Equatable {
     let downloadURL: URL
     let expectedSizeBytes: Int64
     let sha256: String?
-}
-
-struct FeedbackEvent: Codable {
-    let timestamp: Date
-    let rawText: String
-    let polishedText: String
-    let feedback: String
-    let diffSummary: String
-    let approved: Bool
 }
 
 enum ProviderError: Error, LocalizedError {

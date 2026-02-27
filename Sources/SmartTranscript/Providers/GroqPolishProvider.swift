@@ -28,17 +28,4 @@ final class GroqPolishProvider: PolishProvider {
             latencyMs: Int(Date().timeIntervalSince(start) * 1_000)
         )
     }
-
-    func proposeRulesDiff(rawText: String, polishedText: String, feedback: String, currentRules: String, model: String) async throws -> RulesDiffResult {
-        let content = try await performChatRequest(
-            endpoint: endpoint,
-            apiKey: apiKey,
-            model: model,
-            systemPrompt: "You update markdown rules files via minimal unified diffs.",
-            userPrompt: makeDiffPrompt(rawText: rawText, polishedText: polishedText, feedback: feedback, currentRules: currentRules)
-        )
-
-        let diff = unwrapCodeBlockIfNeeded(content)
-        return RulesDiffResult(unifiedDiff: diff, summary: "Proposed rule updates from feedback")
-    }
 }

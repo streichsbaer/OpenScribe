@@ -35,25 +35,3 @@ func makePolishUserPrompt(rawText: String, rulesMarkdown: String) -> String {
     Return only final Markdown text.
     """
 }
-
-func makeDiffPrompt(rawText: String, polishedText: String, feedback: String, currentRules: String) -> String {
-    """
-    Current rules file content:
-    \(currentRules)
-
-    Session raw transcript:
-    \(rawText)
-
-    Session polished transcript:
-    \(polishedText)
-
-    User feedback:
-    \(feedback)
-
-    Update rules to address feedback in future runs. Output ONLY a unified diff for file Rules/rules.md.
-    Requirements:
-    - Include --- and +++ headers
-    - Include @@ hunks
-    - Do not include prose outside diff
-    """
-}

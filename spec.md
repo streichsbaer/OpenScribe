@@ -10,12 +10,12 @@
 3. On stop, audio is finalized atomically to `audio.wav`.
 4. STT runs via selected provider.
 5. Polish runs via selected LLM provider with `Rules/rules.md`.
-6. Session artifacts are written: `audio.wav`, `session.json`, `raw.txt`, `polished.md`, `feedback.log.jsonl`.
-7. Feedback proposes unified diff for rules; user approves/rejects; approve triggers auto re-polish.
+6. Session artifacts are written: `audio.wav`, `session.json`, `raw.txt`, `polished.md`.
 
 ## Defaults
 - Start/stop hotkey default: `Fn + Space` (configurable).
 - Copy hotkey default: `Ctrl + Option + V` (configurable).
+- Copy hotkey behavior: copy latest polished transcript then paste via synthetic `Cmd + V` (requires Accessibility permission).
 - If hotkey registration fails, app shows blocking warning and requires manual change.
 - Default STT provider: local `whisper.cpp`.
 - Default local model: `base`.
@@ -29,7 +29,6 @@ Root: `~/Library/Application Support/SmartTranscript`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/session.json`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/raw.txt`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/polished.md`
-- `Recordings/YYYY-MM-DD/HHmmss-<uuid>/feedback.log.jsonl`
 - `Rules/rules.md`
 - `Rules/rules.history.jsonl`
 - `Models/whisper/ggml-<model>.bin`
@@ -44,16 +43,13 @@ Root: `~/Library/Application Support/SmartTranscript`
   - OpenAI chat API
   - Groq chat API
 
-## Feedback Loop
-- User enters feedback text.
-- App asks selected polish provider to return unified diff for `Rules/rules.md`.
-- App validates patch scope and context.
-- UI displays diff for approval.
-- On approval, rules are atomically updated, history log appended, and current session re-polishes.
+## Transcript UI
+- Raw transcript is shown in an editable text area.
+- Polished transcript is shown directly below raw text.
+- No raw/polished tab switcher.
 
 ## Out of Scope (V1)
 - Streaming transcription.
-- Accessibility typing injection.
 - Sync/team dictionaries.
 - Speaker diarization and timestamps.
 

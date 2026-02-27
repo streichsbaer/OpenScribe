@@ -31,8 +31,7 @@ final class SessionManager {
             audioURL: folder.appendingPathComponent("audio.wav"),
             metadataURL: folder.appendingPathComponent("session.json"),
             rawURL: folder.appendingPathComponent("raw.txt"),
-            polishedURL: folder.appendingPathComponent("polished.md"),
-            feedbackLogURL: folder.appendingPathComponent("feedback.log.jsonl")
+            polishedURL: folder.appendingPathComponent("polished.md")
         )
 
         var metadata = SessionMetadata(
@@ -53,8 +52,7 @@ final class SessionManager {
             lastError: nil,
             audioFilePath: paths.audioURL.path,
             rawFilePath: paths.rawURL.path,
-            polishedFilePath: paths.polishedURL.path,
-            feedbackLogPath: paths.feedbackLogURL.path
+            polishedFilePath: paths.polishedURL.path
         )
 
         metadata.stateTransitions.append(SessionStateTransition(state: .recording, timestamp: now, details: "Session started"))
@@ -101,26 +99,6 @@ final class SessionManager {
     func writePolished(_ text: String, for session: inout SessionContext) throws {
         try atomicWrite(text, to: session.paths.polishedURL)
         try persistMetadata(session)
-    }
-
-    func appendFeedback(_ event: FeedbackEvent, for session: SessionContext) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(event),
-              var line = String(data: data, encoding: .utf8) else {
-            return
-        }
-
-        line.append("\n")
-
-        if fileManager.fileExists(atPath: session.paths.feedbackLogURL.path),
-           let handle = try? FileHandle(forWritingTo: session.paths.feedbackLogURL) {
-            defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            try? handle.write(contentsOf: Data(line.utf8))
-        } else {
-            try? line.write(to: session.paths.feedbackLogURL, atomically: true, encoding: .utf8)
-        }
     }
 
     func recoverDanglingRecordings() -> [URL] {

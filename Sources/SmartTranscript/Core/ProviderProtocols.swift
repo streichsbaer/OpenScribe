@@ -12,5 +12,4 @@ protocol PolishProvider {
     var id: String { get }
     var displayName: String { get }
     func polish(rawText: String, rulesMarkdown: String, model: String) async throws -> PolishResult
-    func proposeRulesDiff(rawText: String, polishedText: String, feedback: String, currentRules: String, model: String) async throws -> RulesDiffResult
 }

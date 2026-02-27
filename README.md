@@ -16,7 +16,7 @@ Native macOS menubar dictation app scaffold for Apple Silicon.
   - OpenAI chat completions
   - Groq chat completions
 - Rules file editor + open in external editor.
-- Feedback loop that generates a unified diff, requires approval, updates rules, and auto re-polishes.
+- Transcript view shows Raw (editable) and Polished text in a single stacked layout (no tab switcher).
 - Local model manager (install/remove) for `whisper.cpp` models.
 
 ## Build

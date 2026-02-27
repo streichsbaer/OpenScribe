@@ -2,15 +2,8 @@ import AVFoundation
 import SwiftUI
 
 struct PopoverView: View {
-    enum TranscriptTab: String, CaseIterable {
-        case raw = "Raw"
-        case polished = "Polished"
-    }
-
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
-    @State private var selectedTab: TranscriptTab = .polished
-    @State private var showSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,8 +12,6 @@ struct PopoverView: View {
             sessionSection
             Divider()
             textSection
-            Divider()
-            feedbackSection
 
             if let hotkeyError = shell.hotkeyError {
                 Text("Hotkey issue: \(hotkeyError)")
@@ -49,16 +40,7 @@ struct PopoverView: View {
             }
         }
         .padding(12)
-        .frame(width: 500)
-        .sheet(isPresented: Binding(get: { shell.pendingProposal != nil }, set: { _ in })) {
-            if let proposal = shell.pendingProposal {
-                RulesDiffSheet(diff: proposal.diffResult.unifiedDiff) {
-                    shell.rejectRulesProposal()
-                } onApprove: {
-                    shell.approveRulesProposal()
-                }
-            }
-        }
+        .frame(width: 520)
     }
 
     private var inputSection: some View {
@@ -131,29 +113,30 @@ struct PopoverView: View {
             Text("Text")
                 .font(.headline)
 
-            Picker("Tab", selection: $selectedTab) {
-                ForEach(TranscriptTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
+            Text("Raw transcript")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
 
-            Group {
-                if selectedTab == .raw {
-                    TextEditor(text: Binding(
-                        get: { shell.rawTranscript },
-                        set: { shell.updateRawTranscriptFromEditor($0) }
-                    ))
-                    .font(.system(.body, design: .monospaced))
-                } else {
-                    ScrollView {
-                        Text(shell.polishedTranscript.isEmpty ? "Polished transcript will appear here." : shell.polishedTranscript)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                }
+            TextEditor(text: Binding(
+                get: { shell.rawTranscript },
+                set: { shell.updateRawTranscriptFromEditor($0) }
+            ))
+            .font(.system(.body, design: .monospaced))
+            .frame(minHeight: 110)
+            .padding(8)
+            .background(Color(NSColor.textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text("Polished transcript")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            ScrollView {
+                Text(shell.polishedTranscript.isEmpty ? "Polished transcript will appear here." : shell.polishedTranscript)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
             }
-            .frame(minHeight: 120)
+            .frame(minHeight: 150)
             .padding(8)
             .background(Color(NSColor.textBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -173,25 +156,6 @@ struct PopoverView: View {
         }
     }
 
-    private var feedbackSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Feedback")
-                .font(.headline)
-
-            TextEditor(text: $shell.feedbackText)
-                .frame(height: 80)
-                .padding(6)
-                .background(Color(NSColor.textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            Button("Propose Rules Update") {
-                shell.proposeRulesUpdateFromFeedback()
-            }
-            .buttonStyle(.bordered)
-            .disabled(shell.feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-    }
-
     private var permissionText: String {
         switch shell.permissionState {
         case .authorized:
@@ -205,46 +169,6 @@ struct PopoverView: View {
 
     private func openSettings() {
         shell.openSettingsWindow()
-    }
-}
-
-struct RulesDiffSheet: View {
-    let diff: String
-    let onReject: () -> Void
-    let onApprove: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Proposed Rules Diff")
-                .font(.title3)
-
-            ScrollView {
-                Text(diff)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(8)
-            }
-            .background(Color(NSColor.textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            HStack {
-                Button("Reject") {
-                    onReject()
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Spacer()
-
-                Button("Approve") {
-                    onApprove()
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(16)
-        .frame(width: 700, height: 520)
     }
 }
 

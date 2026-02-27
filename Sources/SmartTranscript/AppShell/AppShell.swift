@@ -13,9 +13,6 @@ final class AppShell: ObservableObject {
     @Published var statusMessage: String = "Ready"
     @Published var lastError: String?
 
-    @Published var feedbackText: String = ""
-    @Published var pendingProposal: FeedbackProposal?
-
     @Published var hotkeyError: String?
 
     @Published var rulesDraft: String
@@ -39,7 +36,6 @@ final class AppShell: ObservableObject {
     private let providerFactory: ProviderFactory
     private let transcriptionPipeline: TranscriptionPipeline
     private let polishPipeline: PolishPipeline
-    private let feedbackEngine: FeedbackEngine
     private var hasPromptedForAccessibilityPermission = false
 
     init() {
@@ -71,7 +67,6 @@ final class AppShell: ObservableObject {
         self.providerFactory = factory
         self.transcriptionPipeline = TranscriptionPipeline(providerFactory: factory)
         self.polishPipeline = PolishPipeline(providerFactory: factory)
-        self.feedbackEngine = FeedbackEngine(polishPipeline: self.polishPipeline, rulesStore: self.rulesStore)
 
         self.rulesDraft = rulesStore.currentRules
         self.permissionState = audioCapture.permissionState()
@@ -196,8 +191,6 @@ final class AppShell: ObservableObject {
         do {
             rawTranscript = ""
             polishedTranscript = ""
-            pendingProposal = nil
-            feedbackText = ""
             lastError = nil
 
             var session = try sessionManager.startSession(
@@ -311,74 +304,6 @@ final class AppShell: ObservableObject {
                 self.currentSession = session
             }
         }
-    }
-
-    func proposeRulesUpdateFromFeedback() {
-        Task { @MainActor [weak self] in
-            guard let self,
-                  !self.feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !self.rawTranscript.isEmpty else {
-                return
-            }
-
-            do {
-                let proposal = try await self.feedbackEngine.propose(
-                    rawText: self.rawTranscript,
-                    polishedText: self.polishedTranscript,
-                    feedback: self.feedbackText,
-                    settings: self.settings
-                )
-                self.pendingProposal = proposal
-                self.statusMessage = "Diff proposed. Review and approve."
-            } catch {
-                self.lastError = error.localizedDescription
-                self.statusMessage = "Failed to generate rules diff"
-            }
-        }
-    }
-
-    func approveRulesProposal() {
-        Task { @MainActor [weak self] in
-            guard let self,
-                  let proposal = self.pendingProposal else {
-                return
-            }
-
-            do {
-                try self.feedbackEngine.applyApproved(proposal: proposal)
-                self.rulesStore.reload()
-                self.rulesDraft = self.rulesStore.currentRules
-                self.pendingProposal = nil
-
-                if let session = self.currentSession {
-                    let feedbackEvent = FeedbackEvent(
-                        timestamp: Date(),
-                        rawText: self.rawTranscript,
-                        polishedText: self.polishedTranscript,
-                        feedback: self.feedbackText,
-                        diffSummary: proposal.diffResult.summary,
-                        approved: true
-                    )
-                    self.sessionManager.appendFeedback(feedbackEvent, for: session)
-                }
-
-                self.statusMessage = "Rules updated. Re-polishing current session."
-                self.retryPolish()
-            } catch {
-                self.lastError = error.localizedDescription
-                self.statusMessage = "Failed to apply rules update"
-            }
-        }
-    }
-
-    func rejectRulesProposal() {
-        guard let proposal = pendingProposal else {
-            return
-        }
-
-        feedbackEngine.reject(proposal)
-        pendingProposal = nil
-        statusMessage = "Rules update rejected"
     }
 
     func saveRulesDraft() {
