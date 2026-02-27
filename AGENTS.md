@@ -29,3 +29,11 @@
 - Add a commit body only when context is needed, with `Why` and `What`.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - If unrelated files are already staged, commit only intended paths.
+
+## Commit Cadence
+
+- Create one commit for each completed behavior change after local verification.
+- Create one commit for each focused bug fix.
+- Group related documentation or governance updates into one docs commit.
+- Do not wait for large batches when a scoped, verified unit is complete.
+- If work is exploratory and unverified, hold commits until the change is validated.
