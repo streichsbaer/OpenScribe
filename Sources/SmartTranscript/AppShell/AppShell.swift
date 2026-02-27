@@ -24,6 +24,7 @@ final class AppShell: ObservableObject {
     @Published var polishElapsedSeconds: Int = 0
 
     var openSettingsWindowHandler: (() -> Void)?
+    var updatePopoverSizeHandler: ((CGSize) -> Void)?
 
     let layout: DirectoryLayout
     let settingsStore: SettingsStore
@@ -200,6 +201,13 @@ final class AppShell: ObservableObject {
 
     func openSettingsWindow() {
         openSettingsWindowHandler?()
+    }
+
+    func updatePopoverSize(expandedTextPanels: Bool) {
+        let size = expandedTextPanels
+            ? CGSize(width: 540, height: 900)
+            : CGSize(width: 540, height: 760)
+        updatePopoverSizeHandler?(size)
     }
 
     func updateRawTranscriptFromEditor(_ text: String) {

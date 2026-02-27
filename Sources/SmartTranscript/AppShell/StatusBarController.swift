@@ -44,6 +44,9 @@ final class StatusBarController: NSObject {
         shell.openSettingsWindowHandler = { [weak self] in
             self?.openSettings()
         }
+        shell.updatePopoverSizeHandler = { [weak self] size in
+            self?.updatePopoverSize(size)
+        }
         configureStatusItem()
         configurePopover()
         bindShellState()
@@ -94,7 +97,7 @@ final class StatusBarController: NSObject {
     private func configurePopover() {
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 520, height: 760)
+        popover.contentSize = NSSize(width: 540, height: 760)
         popover.contentViewController = NSHostingController(rootView: PopoverView().environmentObject(shell))
     }
 
@@ -104,6 +107,13 @@ final class StatusBarController: NSObject {
         } else {
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    private func updatePopoverSize(_ size: CGSize) {
+        popover.contentSize = NSSize(width: size.width, height: size.height)
+        if popover.isShown {
+            popover.contentViewController?.view.window?.setContentSize(NSSize(width: size.width, height: size.height))
         }
     }
 

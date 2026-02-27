@@ -17,7 +17,13 @@ struct PopoverView: View {
             footerSection
         }
         .padding(12)
-        .frame(width: 540, height: 760)
+        .frame(width: 540, height: popoverHeight)
+        .onAppear {
+            shell.updatePopoverSize(expandedTextPanels: expandedTextPanels)
+        }
+        .onChange(of: expandedTextPanels) { _, newValue in
+            shell.updatePopoverSize(expandedTextPanels: newValue)
+        }
     }
 
     private var headerSection: some View {
@@ -330,6 +336,10 @@ struct PopoverView: View {
 
     private var textPanelHeight: CGFloat {
         expandedTextPanels ? 220 : 120
+    }
+
+    private var popoverHeight: CGFloat {
+        expandedTextPanels ? 900 : 760
     }
 }
 

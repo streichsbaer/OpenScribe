@@ -29,11 +29,6 @@ struct SettingsView: View {
     private let authorXURL = URL(string: "https://x.com/s_streichsbier")!
     private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/SOUL.md")!
     private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/AGENTS.md")!
-    private let repositoryRootURL = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -407,48 +402,19 @@ struct SettingsView: View {
                     Text("Built in collaboration with Scribe, the SmartTranscript coding partner.")
                         .foregroundStyle(.secondary)
                     HStack(spacing: 8) {
-                        Button {
-                            NSWorkspace.shared.open(soulDocURL)
-                        } label: {
-                            Label("SOUL.md", systemImage: "doc.text")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!FileManager.default.fileExists(atPath: soulDocURL.path))
-                        .help("Open SOUL.md in your default app")
-
-                        Button {
-                            NSWorkspace.shared.open(agentsDocURL)
-                        } label: {
-                            Label("AGENTS.md", systemImage: "doc.text")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!FileManager.default.fileExists(atPath: agentsDocURL.path))
-                        .help("Open AGENTS.md in your default app")
+                        Link("SOUL.md", destination: soulGitHubURL)
+                        Text("·")
+                            .foregroundStyle(.tertiary)
+                        Link("AGENTS.md", destination: agentsGitHubURL)
                     }
-
-                    HStack(spacing: 8) {
-                        Link(destination: soulGitHubURL) {
-                            Label("SOUL.md on GitHub", systemImage: "link")
-                        }
-                        .buttonStyle(.bordered)
-
-                        Link(destination: agentsGitHubURL) {
-                            Label("AGENTS.md on GitHub", systemImage: "link")
-                        }
-                        .buttonStyle(.bordered)
-                    }
+                    .font(.caption)
                 }
             }
 
             settingsCard("AUTHOR LINKS") {
                 HStack(spacing: 12) {
-                    Link(destination: authorGitHubURL) {
-                        Label("streichsbaer", systemImage: "chevron.left.forwardslash.chevron.right")
-                    }
-
-                    Link(destination: authorXURL) {
-                        Label("@s_streichsbier", systemImage: "at")
-                    }
+                    Link("GitHub · @streichsbaer", destination: authorGitHubURL)
+                    Link("X · @s_streichsbier", destination: authorXURL)
                 }
                 .font(.subheadline)
             }
@@ -504,14 +470,6 @@ struct SettingsView: View {
 
     private var appBuild: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
-    }
-
-    private var soulDocURL: URL {
-        repositoryRootURL.appendingPathComponent("SOUL.md")
-    }
-
-    private var agentsDocURL: URL {
-        repositoryRootURL.appendingPathComponent("AGENTS.md")
     }
 
     private func transcriptionModels(for provider: String) -> [String] {
