@@ -12,7 +12,7 @@ struct OpenAIChatRequest: Codable {
 
     let model: String
     let messages: [Message]
-    let temperature: Double
+    let temperature: Double?
 }
 
 struct OpenAIChatResponse: Codable {
@@ -29,8 +29,29 @@ struct OpenAIChatResponse: Codable {
     let choices: [Choice]
 }
 
-enum OpenAICompatibleError: Error {
+enum OpenAICompatibleError: Error, LocalizedError {
     case http(Int, String)
+
+    var errorDescription: String? {
+        switch self {
+        case .http(let status, let rawDetails):
+            let details = Self.extractMessage(from: rawDetails) ?? rawDetails
+            if details.isEmpty {
+                return "OpenAI-compatible API request failed with HTTP \(status)."
+            }
+            return "OpenAI-compatible API request failed with HTTP \(status): \(details)"
+        }
+    }
+
+    private static func extractMessage(from payload: String) -> String? {
+        guard let data = payload.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = json["error"] as? [String: Any],
+              let message = error["message"] as? String else {
+            return nil
+        }
+        return message
+    }
 }
 
 func performWhisperRequest(
@@ -96,13 +117,16 @@ func performChatRequest(
     systemPrompt: String,
     userPrompt: String
 ) async throws -> String {
+    let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let temperature: Double? = normalizedModel.hasPrefix("gpt-5") ? nil : 0.1
+
     let requestBody = OpenAIChatRequest(
         model: model,
         messages: [
             .init(role: "system", content: systemPrompt),
             .init(role: "user", content: userPrompt)
         ],
-        temperature: 0.1
+        temperature: temperature
     )
 
     var request = URLRequest(url: endpoint)

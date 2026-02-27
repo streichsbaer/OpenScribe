@@ -235,7 +235,7 @@ struct SettingsView: View {
         case "whispercpp":
             return ["tiny", "base", "small", "medium"]
         case "openai_whisper":
-            return ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"]
+            return ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"]
         case "groq_whisper":
             return ["whisper-large-v3", "whisper-large-v3-turbo"]
         default:
