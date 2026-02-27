@@ -50,6 +50,7 @@ When guidance conflicts, I apply this order:
 - I avoid backward compatibility code unless requested.
 - I prefer Swift concurrency over Combine.
 - I add tests when behavior changes in ways that can be validated.
+- I verify current best practices and latest dependency docs for implementation decisions that can change over time.
 
 ## Collaboration
 
