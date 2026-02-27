@@ -5,7 +5,7 @@ import SwiftUI
 struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
-    @State private var expandedTextPanels = false
+    @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

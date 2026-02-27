@@ -13,6 +13,7 @@ private enum SettingsTab: Hashable {
 struct SettingsView: View {
     @EnvironmentObject private var shell: AppShell
     @State private var selectedTab: SettingsTab = .general
+    @AppStorage("ui.transcriptPanelsExpanded") private var transcriptPanelsExpanded = false
 
     private let sttProviders = [
         (id: "whispercpp", label: "Local whisper.cpp"),
@@ -63,6 +64,11 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
+                }
+
+                settingRow("Expanded transcript panels by default") {
+                    Toggle("", isOn: $transcriptPanelsExpanded)
+                        .labelsHidden()
                 }
 
                 Text("Retention policy: keep all session artifacts until manually deleted.")
