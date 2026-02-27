@@ -79,8 +79,6 @@ final class AppShell: ObservableObject {
         self.openAIKeyInput = keychainStore.load(.openAI) ?? ""
         self.groqKeyInput = keychainStore.load(.groq) ?? ""
 
-        migrateDeprecatedSettingsIfNeeded()
-
         audioCapture.onLevelUpdate = { [weak self] level in
             Task { @MainActor [weak self] in
                 self?.meterLevel = level
@@ -451,19 +449,6 @@ final class AppShell: ObservableObject {
             return "\(entry.providerDisplayName): using \(entry.environmentVariableName) from environment. Save a key above to override."
         case .missing:
             return "\(entry.providerDisplayName): no API key in Keychain or \(entry.environmentVariableName)."
-        }
-    }
-
-    private func migrateDeprecatedSettingsIfNeeded() {
-        var migrated = settingsStore.settings
-
-        if migrated.polishProviderID == "openai_polish",
-           migrated.polishModel != "gpt-5-mini" {
-            migrated.polishModel = "gpt-5-mini"
-        }
-
-        if migrated != settingsStore.settings {
-            settingsStore.update { $0 = migrated }
         }
     }
 

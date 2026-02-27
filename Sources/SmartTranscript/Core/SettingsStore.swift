@@ -11,13 +11,8 @@ final class SettingsStore: ObservableObject {
         self.fileURL = layout.settingsFile
         self.fileManager = fileManager
 
-        if var loaded = Self.load(from: fileURL) {
-            let migrated = Self.normalize(loaded)
-            self.settings = migrated
-            if migrated != loaded {
-                loaded = migrated
-                try? persist()
-            }
+        if let loaded = Self.load(from: fileURL) {
+            self.settings = loaded
         } else {
             self.settings = .default
             try? persist()
@@ -49,16 +44,6 @@ final class SettingsStore: ObservableObject {
         }
 
         return try? JSONDecoder().decode(AppSettings.self, from: data)
-    }
-
-    private static func normalize(_ settings: AppSettings) -> AppSettings {
-        var normalized = settings
-        normalized.startStopHotkey = normalized.startStopHotkey.normalizedForCarbonHotkey()
-        normalized.copyHotkey = normalized.copyHotkey.normalizedForCarbonHotkey()
-        if normalized.polishProviderID == "openai_polish", normalized.polishModel != "gpt-5-mini" {
-            normalized.polishModel = "gpt-5-mini"
-        }
-        return normalized
     }
 
     private func atomicWrite(_ data: Data, to url: URL) throws {
