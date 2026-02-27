@@ -55,6 +55,8 @@ Root: `~/Library/Application Support/SmartTranscript`
 
 ## Improvement Backlog
 - Show a clear processing state and elapsed timer while polish is running.
+- Add official GitHub and X brand icons in About once we finalize bundled asset choice.
+- Add a dedicated SmartTranscript repository link in About.
 - Explore always-on wake phrase mode:
   - keep listening while active
   - start transcript on action phrase
