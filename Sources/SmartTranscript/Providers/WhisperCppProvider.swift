@@ -28,7 +28,8 @@ final class WhisperCppProvider: TranscriptionProvider {
             "-f", audioFileURL.path,
             "-otxt",
             "-of", outputBase.path,
-            "-nt"
+            "-nt",
+            "-ng"
         ]
 
         if let language, !language.isEmpty {

@@ -289,7 +289,10 @@ final class AppShell: ObservableObject {
                 try sessionManager.writePolished(polished.markdown, for: &session)
 
                 if settings.copyOnComplete {
-                    Clipboard.copy(text: polished.markdown)
+                    let clipboardText = normalizedClipboardText(polished.markdown)
+                    if !clipboardText.isEmpty {
+                        Clipboard.copy(text: clipboardText)
+                    }
                     statusMessage = "Polished transcript copied"
                 } else {
                     statusMessage = "Transcription complete"
@@ -342,7 +345,10 @@ final class AppShell: ObservableObject {
                 self.currentSession = session
 
                 if self.settings.copyOnComplete {
-                    Clipboard.copy(text: polished.markdown)
+                    let clipboardText = self.normalizedClipboardText(polished.markdown)
+                    if !clipboardText.isEmpty {
+                        Clipboard.copy(text: clipboardText)
+                    }
                 }
                 self.statusMessage = "Polish retry complete"
                 self.endPolishProgressTracking()
@@ -427,7 +433,12 @@ final class AppShell: ObservableObject {
     }
 
     private func latestPolishedCandidate() -> String {
-        !polishedTranscript.isEmpty ? polishedTranscript : latestPolishedTranscript
+        let source = !polishedTranscript.isEmpty ? polishedTranscript : latestPolishedTranscript
+        return normalizedClipboardText(source)
+    }
+
+    private func normalizedClipboardText(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func pasteLatestPolishedViaHotkey() {
