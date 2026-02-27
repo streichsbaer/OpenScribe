@@ -25,10 +25,18 @@ final class StatusBarController: NSObject {
     private var currentPermissionState: MicrophonePermissionState = .undetermined
     private var lastActiveSignalAt: Date?
     private var isSpeechActive = false
+    private var noiseFloor: Float = 0.005
+    private var speechOnThreshold: Float = 0.020
+    private var speechOffThreshold: Float = 0.012
 
     private let smoothingAlpha: Float = 0.22
-    private let speechOnThreshold: Float = 0.020
-    private let speechOffThreshold: Float = 0.012
+    private let noiseFloorAlpha: Float = 0.08
+    private let minNoiseFloor: Float = 0.005
+    private let maxNoiseFloor: Float = 0.060
+    private let speechOnFloor: Float = 0.020
+    private let speechOffFloor: Float = 0.012
+    private let speechOnNoiseMultiplier: Float = 2.2
+    private let speechOffNoiseMultiplier: Float = 1.5
     private let noAudioTimeoutSeconds: TimeInterval = 1.4
 
     init(shell: AppShell) {
@@ -78,12 +86,13 @@ final class StatusBarController: NSObject {
             return
         }
 
-        if NSImage(systemSymbolName: "waveform.circle.fill", accessibilityDescription: "SmartTranscript") == nil {
+        if NSImage(systemSymbolName: "mic.circle", accessibilityDescription: "SmartTranscript") == nil {
             button.title = "ST"
         } else {
-            setStatusIcon(tintColor: nil)
+            setStatusIcon(symbolName: "mic.circle", tintColor: nil)
         }
 
+        button.imagePosition = .imageOnly
         button.action = #selector(statusItemClicked(_:))
         button.target = self
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -116,6 +125,8 @@ final class StatusBarController: NSObject {
                     : ((1 - smoothingAlpha) * smoothedMeterLevel + smoothingAlpha * level)
 
                 if currentSessionState == .recording {
+                    updateNoiseFloor(using: smoothedMeterLevel)
+
                     if isSpeechActive {
                         if smoothedMeterLevel < speechOffThreshold {
                             isSpeechActive = false
@@ -140,10 +151,16 @@ final class StatusBarController: NSObject {
                     lastActiveSignalAt = Date()
                     smoothedMeterLevel = 0
                     isSpeechActive = false
+                    noiseFloor = minNoiseFloor
+                    speechOnThreshold = speechOnFloor
+                    speechOffThreshold = speechOffFloor
                 } else if state != .recording {
                     lastActiveSignalAt = nil
                     smoothedMeterLevel = 0
                     isSpeechActive = false
+                    noiseFloor = minNoiseFloor
+                    speechOnThreshold = speechOnFloor
+                    speechOffThreshold = speechOffFloor
                 }
                 currentSessionState = state
                 reevaluateMicIconState()
@@ -206,33 +223,76 @@ final class StatusBarController: NSObject {
     private func updateIconAppearance() {
         switch iconState {
         case .idle:
-            setStatusIcon(tintColor: nil)
+            setStatusIcon(symbolName: "mic.circle", tintColor: nil)
         case .working:
-            setStatusIcon(tintColor: blinkPhase ? NSColor.systemGreen : NSColor.systemGreen.withAlphaComponent(0.35))
+            setStatusIcon(
+                symbolName: blinkPhase ? "waveform.circle.fill" : "waveform.circle",
+                tintColor: NSColor.systemGreen
+            )
         case .paused:
-            setStatusIcon(tintColor: blinkPhase ? NSColor.systemGreen : NSColor.systemGray)
+            setStatusIcon(
+                symbolName: blinkPhase ? "pause.circle" : "waveform.circle",
+                tintColor: blinkPhase ? NSColor.systemGreen : NSColor.systemGray
+            )
         case .noAudio:
-            setStatusIcon(tintColor: NSColor.systemRed)
+            setStatusIcon(
+                symbolName: blinkPhase ? "mic.slash.circle.fill" : "mic.slash.circle",
+                tintColor: NSColor.systemRed
+            )
         }
     }
 
-    private func setStatusIcon(tintColor: NSColor?) {
+    private func setStatusIcon(symbolName: String, tintColor: NSColor?) {
         guard let button = statusItem.button,
-              let image = NSImage(systemSymbolName: "waveform.circle.fill", accessibilityDescription: "SmartTranscript") else {
+              let image = symbolImage(named: symbolName) else {
             return
         }
 
-        image.isTemplate = tintColor == nil
-        button.image = image
-        button.contentTintColor = tintColor
+        let baseConfig = NSImage.SymbolConfiguration(pointSize: NSFont.systemFontSize, weight: .medium)
+        var configuredImage = image.withSymbolConfiguration(baseConfig) ?? image
+
+        if let tintColor {
+            let paletteConfig = NSImage.SymbolConfiguration(paletteColors: [tintColor])
+            configuredImage = configuredImage.withSymbolConfiguration(paletteConfig) ?? configuredImage
+            configuredImage.isTemplate = false
+            button.contentTintColor = tintColor
+        } else {
+            configuredImage.isTemplate = true
+            button.contentTintColor = nil
+        }
+
+        button.image = configuredImage
+        button.title = ""
+    }
+
+    private func symbolImage(named symbolName: String) -> NSImage? {
+        let candidates = [symbolName, "mic.circle.fill", "mic.circle", "waveform.circle.fill"]
+        for candidate in candidates {
+            if let image = NSImage(systemSymbolName: candidate, accessibilityDescription: "SmartTranscript") {
+                return image
+            }
+        }
+        return nil
+    }
+
+    private func updateNoiseFloor(using level: Float) {
+        let boundedLevel = min(level, max(noiseFloor, minNoiseFloor) * 1.8)
+        noiseFloor = ((1 - noiseFloorAlpha) * noiseFloor) + (noiseFloorAlpha * max(0, boundedLevel))
+        noiseFloor = min(max(noiseFloor, minNoiseFloor), maxNoiseFloor)
+
+        speechOnThreshold = max(speechOnFloor, noiseFloor * speechOnNoiseMultiplier)
+        speechOffThreshold = max(speechOffFloor, noiseFloor * speechOffNoiseMultiplier)
     }
 
     private func publishDebug(silenceDuration: TimeInterval) {
         shell.menubarIconDebug = String(
-            format: "icon=%@ raw=%.3f smooth=%.3f speech=%@ silence=%.1fs",
+            format: "icon=%@ raw=%.3f smooth=%.3f floor=%.3f on=%.3f off=%.3f speech=%@ silence=%.1fs",
             iconStateLabel(iconState),
             currentMeterLevel,
             smoothedMeterLevel,
+            noiseFloor,
+            speechOnThreshold,
+            speechOffThreshold,
             isSpeechActive ? "yes" : "no",
             max(0, silenceDuration)
         )

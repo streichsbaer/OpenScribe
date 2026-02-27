@@ -70,9 +70,6 @@ struct PopoverView: View {
                 .font(.caption)
                 .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
 
-            Text(shell.menubarIconDebug)
-                .font(.caption2)
-                .foregroundColor(.secondary)
         }
     }
 
