@@ -149,7 +149,14 @@ struct SettingsView: View {
     private var apiSection: some View {
         Section("API Keys") {
             SecureField("OpenAI API key", text: $shell.openAIKeyInput)
+            Text(shell.openAIKeyStatusDescription)
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             SecureField("Groq API key", text: $shell.groqKeyInput)
+            Text(shell.groqKeyStatusDescription)
+                .font(.caption)
+                .foregroundColor(.secondary)
 
             HStack {
                 Button("Save keys") {

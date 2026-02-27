@@ -175,4 +175,22 @@ enum AppDirectories {
 enum KeychainEntry: String {
     case openAI = "openai_api_key"
     case groq = "groq_api_key"
+
+    var environmentVariableName: String {
+        switch self {
+        case .openAI:
+            return "OPENAI_API_KEY"
+        case .groq:
+            return "GROQ_API_KEY"
+        }
+    }
+
+    var providerDisplayName: String {
+        switch self {
+        case .openAI:
+            return "OpenAI"
+        case .groq:
+            return "Groq"
+        }
+    }
 }

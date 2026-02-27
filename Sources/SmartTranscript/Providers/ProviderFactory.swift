@@ -2,11 +2,11 @@ import Foundation
 
 @MainActor
 final class ProviderFactory {
-    private let keychain: KeychainStore
+    private let apiKeyResolver: APIKeyResolver
     private let modelManager: ModelDownloadManager
 
     init(keychain: KeychainStore, modelManager: ModelDownloadManager) {
-        self.keychain = keychain
+        self.apiKeyResolver = APIKeyResolver(keychain: keychain)
         self.modelManager = modelManager
     }
 
@@ -16,12 +16,12 @@ final class ProviderFactory {
             let binary = try resolveWhisperBinary()
             return WhisperCppProvider(binaryURL: binary, modelManager: modelManager)
         case "openai_whisper":
-            guard let key = keychain.load(.openAI), !key.isEmpty else {
+            guard let key = apiKeyResolver.resolve(.openAI).value else {
                 throw ProviderError.missingAPIKey("OpenAI")
             }
             return OpenAIWhisperProvider(apiKey: key)
         case "groq_whisper":
-            guard let key = keychain.load(.groq), !key.isEmpty else {
+            guard let key = apiKeyResolver.resolve(.groq).value else {
                 throw ProviderError.missingAPIKey("Groq")
             }
             return GroqWhisperProvider(apiKey: key)
@@ -33,12 +33,12 @@ final class ProviderFactory {
     func polishProvider(id: String) throws -> any PolishProvider {
         switch id {
         case "openai_polish":
-            guard let key = keychain.load(.openAI), !key.isEmpty else {
+            guard let key = apiKeyResolver.resolve(.openAI).value else {
                 throw ProviderError.missingAPIKey("OpenAI")
             }
             return OpenAIPolishProvider(apiKey: key)
         case "groq_polish":
-            guard let key = keychain.load(.groq), !key.isEmpty else {
+            guard let key = apiKeyResolver.resolve(.groq).value else {
                 throw ProviderError.missingAPIKey("Groq")
             }
             return GroqPolishProvider(apiKey: key)

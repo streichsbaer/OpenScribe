@@ -33,4 +33,8 @@ swift run SmartTranscript
 - API keys are stored in Keychain entries:
   - `openai_api_key`
   - `groq_api_key`
+- Environment variable fallback is supported:
+  - `OPENAI_API_KEY`
+  - `GROQ_API_KEY`
+  - Keychain values take precedence over environment values.
 - `swift test` currently requires a full Xcode toolchain on this machine (`xcodebuild` is not installed in the active developer directory).

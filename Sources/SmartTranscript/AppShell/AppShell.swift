@@ -31,6 +31,7 @@ final class AppShell: ObservableObject {
     let modelManager: ModelDownloadManager
 
     private let keychainStore: KeychainStore
+    private let apiKeyResolver: APIKeyResolver
     private let sessionManager: SessionManager
     private let audioCapture: AudioCaptureManager
     private let hotkeyManager: HotkeyManager
@@ -59,6 +60,7 @@ final class AppShell: ObservableObject {
         self.rulesStore = RulesStore(layout: resolvedLayout)
         self.modelManager = ModelDownloadManager(layout: resolvedLayout)
         self.keychainStore = KeychainStore()
+        self.apiKeyResolver = APIKeyResolver(keychain: keychainStore)
         self.sessionManager = SessionManager(layout: resolvedLayout)
         self.audioCapture = AudioCaptureManager()
         self.hotkeyManager = HotkeyManager()
@@ -102,6 +104,14 @@ final class AppShell: ObservableObject {
         case .undetermined:
             return "gray"
         }
+    }
+
+    var openAIKeyStatusDescription: String {
+        apiKeyStatusDescription(for: .openAI)
+    }
+
+    var groqKeyStatusDescription: String {
+        apiKeyStatusDescription(for: .groq)
     }
 
     func updateSettings(_ mutate: (inout AppSettings) -> Void) {
@@ -416,6 +426,22 @@ final class AppShell: ObservableObject {
         } catch {
             hotkeyError = error.localizedDescription
             statusMessage = "Hotkey registration failed. Change hotkey in Settings."
+        }
+    }
+
+    private func apiKeyStatusDescription(for entry: KeychainEntry) -> String {
+        let resolution = apiKeyResolver.resolve(entry)
+
+        switch resolution.source {
+        case .keychain:
+            if resolution.environmentPresent {
+                return "\(entry.providerDisplayName): using saved Keychain key (overrides \(entry.environmentVariableName))."
+            }
+            return "\(entry.providerDisplayName): using saved Keychain key."
+        case .environment:
+            return "\(entry.providerDisplayName): using \(entry.environmentVariableName) from environment. Save a key above to override."
+        case .missing:
+            return "\(entry.providerDisplayName): no API key in Keychain or \(entry.environmentVariableName)."
         }
     }
 }
