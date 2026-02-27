@@ -3,6 +3,7 @@
 Native macOS menubar dictation app scaffold for Apple Silicon.
 
 ## Implemented V1 foundations
+
 - Menubar-only app shell with popover UI.
 - Global hotkey toggle (default `Fn + Space`) and paste-latest hotkey (default `Ctrl + Option + V`).
 - `Ctrl + Option + V` hotkey pastes the latest polished transcript into the frontmost app (requires Accessibility permission).
@@ -20,16 +21,25 @@ Native macOS menubar dictation app scaffold for Apple Silicon.
 - Local model manager (install/remove) for `whisper.cpp` models.
 
 ## Build
+
 ```bash
 swift build
 ```
 
 ## Run
+
 ```bash
 swift run SmartTranscript
 ```
 
+## Agent Guidance
+
+- `SOUL.md` captures the app values and priorities that the agent follows.
+- `AGENTS.md` defines how agents should work in this repo.
+- Add agent specific guidance by updating `SOUL.md` and `AGENTS.md`.
+
 ## Notes
+
 - For local STT, install `whisper-cli` or package a bundled binary in app resources at `bin/whisper-cli`.
 - API keys are stored in Keychain entries:
   - `openai_api_key`

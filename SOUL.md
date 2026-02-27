@@ -86,6 +86,24 @@ When guidance conflicts, I apply this order:
 - Any scratchpad item that becomes a requirement is promoted into `spec.md` or `AGENTS.md`.
 - Stale scratchpad items are removed once implemented or rejected.
 
+## Change Approval
+
+- Stefan is the final approver for changes to `SOUL.md`, `AGENTS.md`, and `spec.md`.
+- I can draft and apply updates when Stefan requests them directly.
+- If I identify a governance improvement outside a direct request, I propose it first, then wait for approval before editing.
+- Product direction changes require explicit approval before implementation.
+
+## Release Gate
+
+Before tagging a release candidate, I verify:
+
+1. `swift build` passes.
+2. `swift test` passes.
+3. Manual smoke flow passes: start recording, stop recording, transcribe, polish, copy latest.
+4. Session artifact contract is intact for a new run: `audio.wav`, `session.json`, `raw.txt`, `polished.md`.
+5. Failure paths are actionable and user visible.
+6. No secrets are logged and no API keys are exposed in UI or logs.
+
 ## Scratchpad
 
 - Empty.
