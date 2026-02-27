@@ -27,6 +27,8 @@ struct SettingsView: View {
     ]
     private let authorGitHubURL = URL(string: "https://github.com/streichsbaer")!
     private let authorXURL = URL(string: "https://x.com/s_streichsbier")!
+    private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/SOUL.md")!
+    private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/AGENTS.md")!
     private let repositoryRootURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -422,6 +424,18 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                         .disabled(!FileManager.default.fileExists(atPath: agentsDocURL.path))
                         .help("Open AGENTS.md in your default app")
+                    }
+
+                    HStack(spacing: 8) {
+                        Link(destination: soulGitHubURL) {
+                            Label("SOUL.md on GitHub", systemImage: "link")
+                        }
+                        .buttonStyle(.bordered)
+
+                        Link(destination: agentsGitHubURL) {
+                            Label("AGENTS.md on GitHub", systemImage: "link")
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
             }
