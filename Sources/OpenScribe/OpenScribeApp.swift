@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SmartTranscriptApp: App {
+struct OpenScribeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {

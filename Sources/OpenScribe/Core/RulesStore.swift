@@ -81,7 +81,7 @@ final class RulesStore: ObservableObject {
     }
 
     static let defaultTemplate = """
-    # SmartTranscript Rules
+    # OpenScribe Rules
 
     ## Goal
     Convert raw dictation into clean Markdown while preserving intent and wording.

@@ -1,4 +1,4 @@
-# SmartTranscript V1 Spec
+# OpenScribe V1 Spec
 
 ## Target
 - Native Apple Silicon macOS app (tested target: macOS 26, min package platform currently set to macOS 15 for tool compatibility).
@@ -24,7 +24,7 @@
 - Copy-on-complete: enabled.
 
 ## Storage Layout
-Root: `~/Library/Application Support/SmartTranscript`
+Root: `~/Library/Application Support/OpenScribe`
 
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/audio.wav`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/session.json`
@@ -59,7 +59,7 @@ Root: `~/Library/Application Support/SmartTranscript`
 
 ## Improvement Backlog
 - Add official GitHub and X brand icons in About once we finalize bundled asset choice.
-- Add a dedicated SmartTranscript repository link in About.
+- Add a dedicated OpenScribe repository link in About.
 - Explore always-on wake phrase mode:
   - keep listening while active
   - start transcript on action phrase
@@ -79,6 +79,6 @@ Root: `~/Library/Application Support/SmartTranscript`
 
 ## Build/Run
 - `swift build`
-- `swift run SmartTranscript`
+- `swift run OpenScribe`
 
 For full app signing/notarization and polished packaging, use a follow-up release phase.

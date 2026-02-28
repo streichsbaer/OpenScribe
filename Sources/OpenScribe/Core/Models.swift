@@ -182,7 +182,7 @@ enum ProviderError: Error, LocalizedError {
 }
 
 enum AppDirectories {
-    static let appSupportName = "SmartTranscript"
+    static let appSupportName = "OpenScribe"
 }
 
 enum KeychainEntry: String {

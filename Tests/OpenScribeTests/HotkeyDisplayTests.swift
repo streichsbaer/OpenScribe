@@ -1,5 +1,5 @@
 import XCTest
-@testable import SmartTranscript
+@testable import OpenScribe
 
 final class HotkeyDisplayTests: XCTestCase {
     func testStartStopDefaultDisplayString() {

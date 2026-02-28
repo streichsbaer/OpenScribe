@@ -9,7 +9,7 @@ final class SettingsWindowController: NSWindowController {
     init(shell: AppShell) {
         let host = NSHostingController(rootView: SettingsView().environmentObject(shell))
         let window = NSWindow(contentViewController: host)
-        window.title = "SmartTranscript Settings"
+        window.title = "OpenScribe Settings"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(Self.defaultContentSize)
         window.contentMinSize = Self.minimumContentSize

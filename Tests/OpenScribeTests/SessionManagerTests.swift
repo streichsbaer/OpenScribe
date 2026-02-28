@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import SmartTranscript
+@testable import OpenScribe
 
 final class SessionManagerTests: XCTestCase {
     func testStartSessionCreatesSessionArtifacts() throws {
@@ -61,7 +61,7 @@ final class SessionManagerTests: XCTestCase {
 
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("SmartTranscriptTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("OpenScribeTests-\(UUID().uuidString)", isDirectory: true)
 
         let layout = DirectoryLayout(
             appSupport: root,

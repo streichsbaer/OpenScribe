@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "SmartTranscript",
+    name: "OpenScribe",
     defaultLocalization: "en",
     platforms: [
         .macOS(.v15)
     ],
     products: [
         .executable(
-            name: "SmartTranscript",
-            targets: ["SmartTranscript"]
+            name: "OpenScribe",
+            targets: ["OpenScribe"]
         )
     ],
     targets: [
         .executableTarget(
-            name: "SmartTranscript",
+            name: "OpenScribe",
             exclude: ["Resources/AppInfo.plist"],
             resources: [
                 .process("Resources")
@@ -25,13 +25,13 @@ let package = Package(
                     "-Xlinker", "-sectcreate",
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/SmartTranscript/Resources/AppInfo.plist"
+                    "-Xlinker", "Sources/OpenScribe/Resources/AppInfo.plist"
                 ])
             ]
         ),
         .testTarget(
-            name: "SmartTranscriptTests",
-            dependencies: ["SmartTranscript"]
+            name: "OpenScribeTests",
+            dependencies: ["OpenScribe"]
         )
     ]
 )

@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 final class KeychainStore {
-    private let service = "SmartTranscript"
+    private let service = "OpenScribe"
 
     func save(_ value: String, for entry: KeychainEntry) throws {
         let data = Data(value.utf8)

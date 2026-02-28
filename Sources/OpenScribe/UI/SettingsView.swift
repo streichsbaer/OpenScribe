@@ -87,8 +87,8 @@ struct SettingsView: View {
     ]
     private let authorGitHubURL = URL(string: "https://github.com/streichsbaer")!
     private let authorXURL = URL(string: "https://x.com/s_streichsbier")!
-    private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/SOUL.md")!
-    private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/SmartTranscript/blob/main/AGENTS.md")!
+    private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/OpenScribe/blob/main/SOUL.md")!
+    private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/OpenScribe/blob/main/AGENTS.md")!
 
     init(onPreferredSizeChange: ((CGSize, Bool) -> Void)? = nil) {
         self.onPreferredSizeChange = onPreferredSizeChange
@@ -154,7 +154,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This moves SmartTranscript local sessions, models, rules, and settings to Trash.")
+            Text("This moves OpenScribe local sessions, models, rules, and settings to Trash.")
         }
     }
 
@@ -496,7 +496,7 @@ struct SettingsView: View {
                     )
                 )
 
-                Text("Paste hotkey works only when Accessibility permission is granted for SmartTranscript.")
+                Text("Paste hotkey works only when Accessibility permission is granted for OpenScribe.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -623,7 +623,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("If local transcription is selected and the model is missing, SmartTranscript auto-downloads it before transcription starts.")
+                Text("If local transcription is selected and the model is missing, OpenScribe auto-downloads it before transcription starts.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -660,7 +660,7 @@ struct SettingsView: View {
 
     private var aboutTab: some View {
         settingsPage {
-            settingsCard("SMARTTRANSCRIPT") {
+            settingsCard("OPENSCRIBE") {
                 settingRow("Version") {
                     Text(appVersion)
                         .foregroundStyle(.secondary)
@@ -691,7 +691,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Created by Stefan Streichsbier.")
                         .foregroundStyle(.secondary)
-                    Text("Built in collaboration with Scribe, the SmartTranscript coding partner.")
+                    Text("Built in collaboration with Scribe, the OpenScribe coding partner.")
                         .foregroundStyle(.secondary)
                     HStack(spacing: 8) {
                         Link("SOUL.md", destination: soulGitHubURL)

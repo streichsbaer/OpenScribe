@@ -1,4 +1,4 @@
-# SmartTranscript Agent Rules
+# OpenScribe Agent Rules
 
 ## Build Policy
 

@@ -51,7 +51,7 @@ final class AppShell: ObservableObject {
 
     init() {
         let resolvedLayout = (try? DirectoryLayout.resolve()) ?? {
-            let fallback = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("SmartTranscript", isDirectory: true)
+            let fallback = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("OpenScribe", isDirectory: true)
             return DirectoryLayout(
                 appSupport: fallback,
                 recordings: fallback.appendingPathComponent("Recordings", isDirectory: true),
@@ -668,7 +668,7 @@ final class AppShell: ObservableObject {
 
     private func pasteLatestPolishedViaHotkey() {
         guard AccessibilityInputInjector.isTrusted(promptIfNeeded: false) else {
-            statusMessage = "Paste hotkey requires Accessibility permission for SmartTranscript."
+            statusMessage = "Paste hotkey requires Accessibility permission for OpenScribe."
             return
         }
 

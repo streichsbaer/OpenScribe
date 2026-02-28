@@ -50,7 +50,7 @@ struct PopoverView: View {
 
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 10) {
-            Label("SmartTranscript", systemImage: "waveform.badge.mic")
+            Label("OpenScribe", systemImage: "waveform.badge.mic")
                 .font(.headline)
 
             Spacer()

@@ -1,7 +1,7 @@
 import Carbon
 import Foundation
 import XCTest
-@testable import SmartTranscript
+@testable import OpenScribe
 
 @MainActor
 final class SettingsStoreTests: XCTestCase {
@@ -23,7 +23,7 @@ final class SettingsStoreTests: XCTestCase {
 
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("SmartTranscriptSettingsTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("OpenScribeSettingsTests-\(UUID().uuidString)", isDirectory: true)
 
         let layout = DirectoryLayout(
             appSupport: root,

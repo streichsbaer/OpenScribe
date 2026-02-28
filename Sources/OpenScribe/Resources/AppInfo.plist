@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>SmartTranscript</string>
+    <string>OpenScribe</string>
     <key>CFBundleDisplayName</key>
-    <string>SmartTranscript</string>
+    <string>OpenScribe</string>
     <key>CFBundleIdentifier</key>
-    <string>com.streichsbaer.smarttranscript</string>
+    <string>com.streichsbaer.openscribe</string>
     <key>CFBundleExecutable</key>
-    <string>SmartTranscript</string>
+    <string>OpenScribe</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -19,6 +19,6 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>SmartTranscript needs microphone access to record and transcribe your dictation.</string>
+    <string>OpenScribe needs microphone access to record and transcribe your dictation.</string>
 </dict>
 </plist>

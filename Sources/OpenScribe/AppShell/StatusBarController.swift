@@ -69,7 +69,7 @@ final class StatusBarController: NSObject {
             let menu = NSMenu()
             menu.addItem(withTitle: "Settings", action: #selector(openSettings), keyEquivalent: ",")
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Quit SmartTranscript", action: #selector(quitApp), keyEquivalent: "q")
+            menu.addItem(withTitle: "Quit OpenScribe", action: #selector(quitApp), keyEquivalent: "q")
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
             statusItem.menu = nil
