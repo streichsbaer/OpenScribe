@@ -21,6 +21,7 @@ final class AppShell: ObservableObject {
     @Published var groqKeyInput: String = ""
     @Published var latestPolishedTranscript: String = ""
     @Published var menubarIconDebug: String = "icon=idle"
+    @Published var transcribeElapsedSeconds: Int = 0
     @Published var polishElapsedSeconds: Int = 0
 
     var openSettingsWindowHandler: (() -> Void)?
@@ -39,6 +40,8 @@ final class AppShell: ObservableObject {
     private let providerFactory: ProviderFactory
     private let transcriptionPipeline: TranscriptionPipeline
     private let polishPipeline: PolishPipeline
+    private var transcribeTimer: Timer?
+    private var transcribeStartedAt: Date?
     private var polishTimer: Timer?
     private var polishStartedAt: Date?
 
@@ -241,6 +244,7 @@ final class AppShell: ObservableObject {
         }
 
         endPolishProgressTracking()
+        endTranscribeProgressTracking()
 
         permissionState = audioCapture.permissionState()
         if permissionState == .undetermined {
@@ -290,9 +294,11 @@ final class AppShell: ObservableObject {
             try sessionManager.stopSession(&session)
 
             sessionState = .transcribing
+            beginTranscribeProgressTracking()
             try sessionManager.transition(&session, to: .transcribing, details: "Running transcription")
 
             let transcript = try await transcriptionPipeline.run(audioFileURL: session.paths.audioURL, settings: settings)
+            endTranscribeProgressTracking()
             rawTranscript = transcript.text
             try sessionManager.writeRaw(transcript.text, for: &session)
 
@@ -339,6 +345,7 @@ final class AppShell: ObservableObject {
             sessionState = .failed
             statusMessage = "Session failed"
             endPolishProgressTracking()
+            endTranscribeProgressTracking()
         }
     }
 
@@ -407,9 +414,11 @@ final class AppShell: ObservableObject {
                 session.metadata.polishModel = self.settings.polishModel
                 session.metadata.languageMode = self.settings.languageMode
                 self.sessionState = .transcribing
+                self.beginTranscribeProgressTracking()
                 try self.sessionManager.transition(&session, to: .transcribing, details: "Retry transcription")
 
                 let transcript = try await self.transcriptionPipeline.run(audioFileURL: session.paths.audioURL, settings: self.settings)
+                self.endTranscribeProgressTracking()
                 self.rawTranscript = transcript.text
                 try self.sessionManager.writeRaw(transcript.text, for: &session)
 
@@ -456,6 +465,7 @@ final class AppShell: ObservableObject {
                 self.sessionState = .failed
                 self.statusMessage = "Re-transcription failed"
                 self.endPolishProgressTracking()
+                self.endTranscribeProgressTracking()
             }
         }
     }
@@ -613,5 +623,35 @@ final class AppShell: ObservableObject {
             return
         }
         polishElapsedSeconds = max(0, Int(Date().timeIntervalSince(started)))
+    }
+
+    private func beginTranscribeProgressTracking() {
+        transcribeTimer?.invalidate()
+        transcribeStartedAt = Date()
+        transcribeElapsedSeconds = 0
+
+        transcribeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateTranscribeElapsedSeconds()
+            }
+        }
+        if let transcribeTimer {
+            RunLoop.main.add(transcribeTimer, forMode: .common)
+        }
+    }
+
+    private func endTranscribeProgressTracking() {
+        transcribeTimer?.invalidate()
+        transcribeTimer = nil
+        transcribeStartedAt = nil
+        transcribeElapsedSeconds = 0
+    }
+
+    private func updateTranscribeElapsedSeconds() {
+        guard let started = transcribeStartedAt else {
+            transcribeElapsedSeconds = 0
+            return
+        }
+        transcribeElapsedSeconds = max(0, Int(Date().timeIntervalSince(started)))
     }
 }

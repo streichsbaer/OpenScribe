@@ -230,6 +230,8 @@ struct PopoverView: View {
             } else {
                 stateChipLabel("Recording", color: .green)
             }
+        case .transcribing:
+            stateChipLabel("Transcribing \(formattedDuration(shell.transcribeElapsedSeconds))", color: .orange)
         case .polishing:
             stateChipLabel("Polishing \(formattedDuration(shell.polishElapsedSeconds))", color: .orange)
         default:
