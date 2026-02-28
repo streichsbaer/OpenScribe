@@ -6,7 +6,7 @@ struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
     @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
-    @State private var selectedRetryApproachID = "default"
+    @State private var selectedRetryApproachID = "settings"
     @State private var selectedRetryPolishModel = ""
 
     var body: some View {
@@ -169,7 +169,7 @@ struct PopoverView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .controlSize(.small)
-                        .frame(width: 220)
+                        .fixedSize(horizontal: true, vertical: false)
 
                         Button("Re-Transcribe") {
                             shell.retryTranscription(
@@ -218,7 +218,7 @@ struct PopoverView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .controlSize(.small)
-                        .frame(width: polishModelPickerWidth)
+                        .fixedSize(horizontal: true, vertical: false)
 
                         Button("Re-Polish") {
                             shell.retryPolish(temporaryModel: selectedRetryPolishModel)
@@ -458,15 +458,15 @@ struct PopoverView: View {
     }
 
     private var retryApproaches: [RetryTranscriptionApproach] {
-        let `default` = RetryTranscriptionApproach(
-            id: "default",
-            title: "Default (\(providerDisplayName(for: shell.settings.transcriptionProviderID)) / \(shell.settings.transcriptionModel))",
+        let settings = RetryTranscriptionApproach(
+            id: "settings",
+            title: "Settings",
             providerID: nil,
             model: nil
         )
 
         return [
-            `default`,
+            settings,
             RetryTranscriptionApproach(id: "whispercpp-base", title: "Local whisper.cpp / base", providerID: "whispercpp", model: "base"),
             RetryTranscriptionApproach(id: "openai-gpt-4o-mini-transcribe", title: "OpenAI / gpt-4o-mini-transcribe", providerID: "openai_whisper", model: "gpt-4o-mini-transcribe"),
             RetryTranscriptionApproach(id: "openai-gpt-4o-transcribe", title: "OpenAI / gpt-4o-transcribe", providerID: "openai_whisper", model: "gpt-4o-transcribe"),
@@ -478,11 +478,6 @@ struct PopoverView: View {
 
     private var selectedRetryApproach: RetryTranscriptionApproach {
         retryApproaches.first(where: { $0.id == selectedRetryApproachID }) ?? retryApproaches[0]
-    }
-
-    private var polishModelPickerWidth: CGFloat {
-        let longestModelLength = retryPolishModels.map(\.count).max() ?? 0
-        return longestModelLength > 18 ? 210 : 140
     }
 
     private var rawSourceSummary: String {
@@ -536,7 +531,7 @@ struct PopoverView: View {
         }
 
         if provider == shell.settings.transcriptionProviderID && model == shell.settings.transcriptionModel {
-            selectedRetryApproachID = "default"
+            selectedRetryApproachID = "settings"
             return
         }
 
