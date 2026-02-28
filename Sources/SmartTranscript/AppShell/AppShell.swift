@@ -39,7 +39,6 @@ final class AppShell: ObservableObject {
     private let providerFactory: ProviderFactory
     private let transcriptionPipeline: TranscriptionPipeline
     private let polishPipeline: PolishPipeline
-    private var hasPromptedForAccessibilityPermission = false
     private var polishTimer: Timer?
     private var polishStartedAt: Date?
 
@@ -412,11 +411,25 @@ final class AppShell: ObservableObject {
                     self?.toggleRecording()
                 }
             }
-            try hotkeyManager.register(action: .copyLatest, setting: settings.copyHotkey) { [weak self] in
+
+            try hotkeyManager.register(action: .copyLatest, setting: .copyOnlyDefault) { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.copyLatestPolished()
+                }
+            }
+
+            if settings.copyHotkey.normalizedForCarbonHotkey() == HotkeySetting.copyOnlyDefault.normalizedForCarbonHotkey() {
+                throw HotkeyError.registrationFailed(
+                    "Paste hotkey cannot match copy hotkey Ctrl+Option+C. Choose a different paste shortcut."
+                )
+            }
+
+            try hotkeyManager.register(action: .pasteLatest, setting: settings.copyHotkey) { [weak self] in
                 Task { @MainActor [weak self] in
                     self?.pasteLatestPolishedViaHotkey()
                 }
             }
+
             hotkeyError = nil
         } catch {
             hotkeyError = error.localizedDescription
@@ -450,6 +463,11 @@ final class AppShell: ObservableObject {
     }
 
     private func pasteLatestPolishedViaHotkey() {
+        guard AccessibilityInputInjector.isTrusted(promptIfNeeded: false) else {
+            statusMessage = "Paste hotkey requires Accessibility permission for SmartTranscript."
+            return
+        }
+
         let candidate = latestPolishedCandidate()
         guard !candidate.isEmpty else {
             statusMessage = "No polished transcript available yet"
@@ -457,15 +475,6 @@ final class AppShell: ObservableObject {
         }
 
         Clipboard.copy(text: candidate)
-
-        if !AccessibilityInputInjector.isTrusted(promptIfNeeded: false) {
-            if !hasPromptedForAccessibilityPermission {
-                _ = AccessibilityInputInjector.isTrusted(promptIfNeeded: true)
-                hasPromptedForAccessibilityPermission = true
-            }
-            statusMessage = "Latest polished transcript copied. Enable Accessibility permission for SmartTranscript to auto-paste."
-            return
-        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
             guard let self else { return }

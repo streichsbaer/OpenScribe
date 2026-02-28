@@ -14,8 +14,9 @@
 
 ## Defaults
 - Start/stop hotkey default: `Fn + Space` (configurable).
-- Copy hotkey default: `Ctrl + Option + V` (configurable).
-- Copy hotkey behavior: copy latest polished transcript then paste via synthetic `Cmd + V` (requires Accessibility permission).
+- Copy hotkey default: `Ctrl + Option + C` (fixed).
+- Paste hotkey default: `Ctrl + Option + V` (configurable).
+- Paste hotkey behavior: copy latest polished transcript then paste via synthetic `Cmd + V` only when Accessibility permission is granted.
 - If hotkey registration fails, app shows blocking warning and requires manual change.
 - Default STT provider: local `whisper.cpp`.
 - Default local model: `base`.

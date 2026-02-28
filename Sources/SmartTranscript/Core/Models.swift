@@ -73,8 +73,9 @@ struct HotkeySetting: Codable, Equatable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    // Space key and ANSI V key are stable virtual keycodes on macOS.
+    // Space, ANSI C, and ANSI V are stable virtual keycodes on macOS.
     private static let spaceKeyCode: UInt32 = 49
+    private static let cKeyCode: UInt32 = 8
     private static let vKeyCode: UInt32 = 9
     static let legacyNSEventFunctionMask: UInt32 = UInt32(NSEvent.ModifierFlags.function.rawValue)
     static let carbonFunctionMask: UInt32 = UInt32(kEventKeyModifierFnMask)
@@ -84,7 +85,12 @@ struct HotkeySetting: Codable, Equatable {
         modifiers: carbonFunctionMask
     )
 
-    static let copyDefault = HotkeySetting(
+    static let copyOnlyDefault = HotkeySetting(
+        keyCode: cKeyCode,
+        modifiers: UInt32(controlKey | optionKey)
+    )
+
+    static let pasteDefault = HotkeySetting(
         keyCode: vKeyCode,
         modifiers: UInt32(controlKey | optionKey)
     )
@@ -117,7 +123,7 @@ struct AppSettings: Codable, Equatable {
         languageMode: "auto",
         copyOnComplete: true,
         startStopHotkey: .startStopDefault,
-        copyHotkey: .copyDefault
+        copyHotkey: .pasteDefault
     )
 }
 

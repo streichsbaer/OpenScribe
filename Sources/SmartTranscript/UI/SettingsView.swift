@@ -384,6 +384,18 @@ struct SettingsView: View {
                 )
             }
 
+            settingsCard("COPY LATEST") {
+                settingRow("Shortcut") {
+                    Text(HotkeyDisplay.string(for: .copyOnlyDefault))
+                        .font(.system(.subheadline, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("Ctrl+Option+C always copies the latest polished transcript.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             settingsCard("PASTE LATEST") {
                 HotkeyEditor(
                     title: "Paste latest polished transcript",
@@ -393,9 +405,13 @@ struct SettingsView: View {
                     )
                 )
 
-                Text("This hotkey copies latest polished text and triggers Cmd+V when Accessibility permission is granted.")
+                Text("Paste hotkey works only when Accessibility permission is granted for SmartTranscript.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Text(accessibilityPermissionGranted ? "Accessibility permission: granted" : "Accessibility permission: missing")
+                    .font(.caption)
+                    .foregroundColor(accessibilityPermissionGranted ? .secondary : .orange)
             }
 
             if let hotkeyError = shell.hotkeyError {
@@ -619,6 +635,10 @@ struct SettingsView: View {
         default:
             return ["gpt-5-mini"]
         }
+    }
+
+    private var accessibilityPermissionGranted: Bool {
+        AccessibilityInputInjector.isTrusted(promptIfNeeded: false)
     }
 }
 

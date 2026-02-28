@@ -4,6 +4,7 @@ import Foundation
 enum HotkeyAction: UInt32, CaseIterable {
     case startStop = 1
     case copyLatest = 2
+    case pasteLatest = 3
 }
 
 enum HotkeyError: Error, LocalizedError {
