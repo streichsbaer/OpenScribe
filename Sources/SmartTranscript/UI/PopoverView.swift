@@ -23,6 +23,7 @@ struct PopoverView: View {
         .onAppear {
             shell.updatePopoverSize(expandedTextPanels: expandedTextPanels)
             syncRetryPolishSelection()
+            syncRetryTranscriptionSelection()
         }
         .onChange(of: expandedTextPanels) { _, newValue in
             shell.updatePopoverSize(expandedTextPanels: newValue)
@@ -32,6 +33,12 @@ struct PopoverView: View {
         }
         .onChange(of: shell.settings.polishModel) { _, _ in
             syncRetryPolishSelection()
+        }
+        .onChange(of: shell.rawTranscriptProviderID) { _, _ in
+            syncRetryTranscriptionSelection()
+        }
+        .onChange(of: shell.rawTranscriptModel) { _, _ in
+            syncRetryTranscriptionSelection()
         }
     }
 
@@ -211,7 +218,7 @@ struct PopoverView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .controlSize(.small)
-                        .frame(width: 210)
+                        .frame(width: polishModelPickerWidth)
 
                         Button("Re-Polish") {
                             shell.retryPolish(temporaryModel: selectedRetryPolishModel)
@@ -473,6 +480,11 @@ struct PopoverView: View {
         retryApproaches.first(where: { $0.id == selectedRetryApproachID }) ?? retryApproaches[0]
     }
 
+    private var polishModelPickerWidth: CGFloat {
+        let longestModelLength = retryPolishModels.map(\.count).max() ?? 0
+        return longestModelLength > 18 ? 210 : 140
+    }
+
     private var rawSourceSummary: String {
         sourceSummary(
             transcript: shell.rawTranscript,
@@ -513,6 +525,24 @@ struct PopoverView: View {
             return
         }
         selectedRetryPolishModel = retryPolishModels.first ?? shell.settings.polishModel
+    }
+
+    private func syncRetryTranscriptionSelection() {
+        let provider = shell.rawTranscriptProviderID.isEmpty ? (shell.currentSession?.metadata.sttProvider ?? "") : shell.rawTranscriptProviderID
+        let model = shell.rawTranscriptModel.isEmpty ? (shell.currentSession?.metadata.sttModel ?? "") : shell.rawTranscriptModel
+
+        guard !provider.isEmpty, !model.isEmpty else {
+            return
+        }
+
+        if provider == shell.settings.transcriptionProviderID && model == shell.settings.transcriptionModel {
+            selectedRetryApproachID = "default"
+            return
+        }
+
+        if let matched = retryApproaches.first(where: { $0.providerID == provider && $0.model == model }) {
+            selectedRetryApproachID = matched.id
+        }
     }
 
     private func providerDisplayName(for providerID: String) -> String {
