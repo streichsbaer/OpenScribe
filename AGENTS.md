@@ -31,6 +31,7 @@
 - Use real line breaks in commit bodies. Do not include literal `\n` escape sequences.
 - Preferred multiline flow without temp files: pass a heredoc directly to `git commit -F -`.
 - Do not use shell-escaped multiline patterns like `-m $'...'` for commit bodies.
+- If a temporary commit message file is used, remove it after a successful commit.
 - After each commit, verify formatting with `git log -1 --pretty=medium`.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - If unrelated files are already staged, commit only intended paths.
