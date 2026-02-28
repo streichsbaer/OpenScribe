@@ -413,8 +413,16 @@ struct SettingsView: View {
 
             settingsCard("AUTHOR LINKS") {
                 HStack(spacing: 12) {
-                    Link("GitHub · @streichsbaer", destination: authorGitHubURL)
-                    Link("X · @s_streichsbier", destination: authorXURL)
+                    BrandLink(
+                        title: "@streichsbaer",
+                        assetName: "GitHubMark",
+                        destination: authorGitHubURL
+                    )
+                    BrandLink(
+                        title: "@s_streichsbier",
+                        assetName: "XMark",
+                        destination: authorXURL
+                    )
                 }
                 .font(.subheadline)
             }
@@ -493,6 +501,25 @@ struct SettingsView: View {
             return ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
         default:
             return ["gpt-5-mini"]
+        }
+    }
+}
+
+private struct BrandLink: View {
+    let title: String
+    let assetName: String
+    let destination: URL
+
+    var body: some View {
+        Link(destination: destination) {
+            HStack(spacing: 6) {
+                Image(assetName, bundle: .module)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+                Text(title)
+            }
         }
     }
 }

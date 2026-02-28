@@ -17,6 +17,9 @@ let package = Package(
         .executableTarget(
             name: "SmartTranscript",
             exclude: ["Resources/AppInfo.plist"],
+            resources: [
+                .process("Resources/Assets.xcassets")
+            ],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",
