@@ -29,6 +29,7 @@ final class StatusBarController: NSObject {
     private var noiseFloor: Float = 0.005
     private var activityThreshold: Float = 0.020
     private var instantActivityThreshold: Float = 0.012
+    private var currentAppearanceMode: AppearanceMode = .system
 
     private let smoothingAlpha: Float = 0.22
     private let noiseFloorAlpha: Float = 0.08
@@ -49,8 +50,10 @@ final class StatusBarController: NSObject {
         shell.updatePopoverSizeHandler = { [weak self] size in
             self?.updatePopoverSize(size)
         }
+        currentAppearanceMode = AppearanceMode(rawValue: shell.settings.appearanceMode) ?? .system
         configureStatusItem()
         configurePopover()
+        applyAppearanceSettings()
         bindShellState()
         startBlinkTimer()
         updateIconAppearance()
@@ -169,6 +172,16 @@ final class StatusBarController: NSObject {
                 reevaluateMicIconState()
             }
             .store(in: &cancellables)
+
+        shell.settingsStore.$settings
+            .receive(on: RunLoop.main)
+            .sink { [weak self] settings in
+                guard let self else { return }
+                currentAppearanceMode = AppearanceMode(rawValue: settings.appearanceMode) ?? .system
+                applyAppearanceSettings()
+                reevaluateMicIconState()
+            }
+            .store(in: &cancellables)
     }
 
     private func startBlinkTimer() {
@@ -231,7 +244,7 @@ final class StatusBarController: NSObject {
         }
 
         button.image = image
-        button.contentTintColor = tintColor(for: state, blinkPhase: blinkPhase)
+        button.contentTintColor = nil
         button.title = ""
     }
 
@@ -287,7 +300,7 @@ final class StatusBarController: NSObject {
             drawSlash = false
         }
 
-        let baseColor = NSColor.labelColor
+        let baseColor = iconBaseColor(for: state, blinkPhase: blinkPhase)
         baseColor.withAlphaComponent(fillAlpha).setFill()
         let outerCircle = NSBezierPath(ovalIn: bounds)
         outerCircle.fill()
@@ -322,36 +335,48 @@ final class StatusBarController: NSObject {
             slash.stroke()
         }
 
-        image.isTemplate = true
+        image.isTemplate = false
         return image
     }
 
-    private func tintColor(for state: MicIconState, blinkPhase: Bool) -> NSColor? {
-        let appearanceMode = AppearanceMode(rawValue: shell.settings.appearanceMode) ?? .system
-
+    private func iconBaseColor(for state: MicIconState, blinkPhase: Bool) -> NSColor {
         switch state {
         case .idle:
-            return monochromeTintColor(for: appearanceMode)
+            return monochromeColor()
         case .working:
-            return adjustedAccentColor(NSColor.systemGreen, for: appearanceMode, blinkPhase: blinkPhase)
+            return adjustedAccentColor(NSColor.systemGreen, blinkPhase: blinkPhase)
         case .paused:
             if blinkPhase {
-                return adjustedAccentColor(NSColor.systemGreen, for: appearanceMode, blinkPhase: true)
+                return adjustedAccentColor(NSColor.systemGreen, blinkPhase: true)
             }
-            return monochromeTintColor(for: appearanceMode).withAlphaComponent(0.62)
+            return monochromeColor().withAlphaComponent(0.62)
         case .noAudio:
-            return adjustedAccentColor(NSColor.systemRed, for: appearanceMode, blinkPhase: blinkPhase)
+            return adjustedAccentColor(NSColor.systemRed, blinkPhase: blinkPhase)
         case .transcribing:
-            return adjustedAccentColor(NSColor.systemOrange, for: appearanceMode, blinkPhase: blinkPhase)
+            return adjustedAccentColor(NSColor.systemOrange, blinkPhase: blinkPhase)
         case .polishing:
-            return adjustedAccentColor(NSColor.systemBlue, for: appearanceMode, blinkPhase: blinkPhase)
+            return adjustedAccentColor(NSColor.systemBlue, blinkPhase: blinkPhase)
         }
     }
 
-    private func monochromeTintColor(for appearanceMode: AppearanceMode) -> NSColor {
-        switch appearanceMode {
+    private func adjustedAccentColor(_ baseColor: NSColor, blinkPhase: Bool) -> NSColor {
+        let alpha: CGFloat = blinkPhase ? 1.0 : 0.65
+        switch currentAppearanceMode {
+        case .system, .light:
+            return baseColor.withAlphaComponent(alpha)
+        case .dark:
+            let lightened = blend(baseColor: baseColor, target: .white, amount: 0.18)
+            return lightened.withAlphaComponent(alpha)
+        }
+    }
+
+    private func monochromeColor() -> NSColor {
+        switch currentAppearanceMode {
         case .system:
-            return NSColor.labelColor
+            if isDarkAppearance(statusItem.button?.effectiveAppearance ?? NSApp.effectiveAppearance) {
+                return NSColor(calibratedWhite: 0.92, alpha: 1.0)
+            }
+            return NSColor(calibratedWhite: 0.10, alpha: 1.0)
         case .light:
             return NSColor(calibratedWhite: 0.10, alpha: 1.0)
         case .dark:
@@ -359,20 +384,25 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private func adjustedAccentColor(
-        _ baseColor: NSColor,
-        for appearanceMode: AppearanceMode,
-        blinkPhase: Bool
-    ) -> NSColor {
-        let alpha: CGFloat = blinkPhase ? 1.0 : 0.65
-        switch appearanceMode {
+    private func isDarkAppearance(_ appearance: NSAppearance?) -> Bool {
+        appearance?.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    private func applyAppearanceSettings() {
+        let appearance = nsAppearance(for: currentAppearanceMode)
+        statusItem.button?.appearance = appearance
+        popover.appearance = appearance
+        popover.contentViewController?.view.appearance = appearance
+    }
+
+    private func nsAppearance(for mode: AppearanceMode) -> NSAppearance? {
+        switch mode {
         case .system:
-            return baseColor.withAlphaComponent(alpha)
+            return nil
         case .light:
-            return baseColor.withAlphaComponent(alpha)
+            return NSAppearance(named: .aqua)
         case .dark:
-            let lightened = blend(baseColor: baseColor, target: .white, amount: 0.18)
-            return lightened.withAlphaComponent(alpha)
+            return NSAppearance(named: .darkAqua)
         }
     }
 
