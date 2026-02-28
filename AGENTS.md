@@ -29,6 +29,9 @@
 - Add a commit body for every commit with these sections: `Why`, `What`, and `Instruction`.
 - `Instruction` must summarize Stefan's request that triggered the change in concise terms.
 - Use real line breaks in commit bodies. Do not include literal `\n` escape sequences.
+- For multiline commit bodies, write the message to a temporary file and commit with `git commit -F <file>`.
+- Do not use shell-escaped multiline patterns like `-m $'...'` for commit bodies.
+- After each commit, verify formatting with `git log -1 --pretty=medium`.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - If unrelated files are already staged, commit only intended paths.
 - Run `git add` and `git commit` sequentially to avoid `.git/index.lock` races.
