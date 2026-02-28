@@ -10,6 +10,10 @@ final class AppShell: ObservableObject {
     @Published var currentSession: SessionContext?
     @Published var rawTranscript: String = ""
     @Published var polishedTranscript: String = ""
+    @Published var rawTranscriptProviderID: String = ""
+    @Published var rawTranscriptModel: String = ""
+    @Published var polishedTranscriptProviderID: String = ""
+    @Published var polishedTranscriptModel: String = ""
     @Published var statusMessage: String = "Ready"
     @Published var lastError: String?
 
@@ -261,6 +265,10 @@ final class AppShell: ObservableObject {
         do {
             rawTranscript = ""
             polishedTranscript = ""
+            rawTranscriptProviderID = ""
+            rawTranscriptModel = ""
+            polishedTranscriptProviderID = ""
+            polishedTranscriptModel = ""
             lastError = nil
 
             var session = try sessionManager.startSession(
@@ -300,6 +308,8 @@ final class AppShell: ObservableObject {
             let transcript = try await transcriptionPipeline.run(audioFileURL: session.paths.audioURL, settings: settings)
             endTranscribeProgressTracking()
             rawTranscript = transcript.text
+            rawTranscriptProviderID = transcript.providerId
+            rawTranscriptModel = transcript.model
             try sessionManager.writeRaw(transcript.text, for: &session)
 
             do {
@@ -316,6 +326,8 @@ final class AppShell: ObservableObject {
 
                 polishedTranscript = polished.markdown
                 latestPolishedTranscript = polished.markdown
+                polishedTranscriptProviderID = polished.providerId
+                polishedTranscriptModel = polished.model
                 try sessionManager.writePolished(polished.markdown, for: &session)
 
                 if settings.copyOnComplete {
@@ -330,6 +342,8 @@ final class AppShell: ObservableObject {
                 endPolishProgressTracking()
             } catch {
                 polishedTranscript = ""
+                polishedTranscriptProviderID = ""
+                polishedTranscriptModel = ""
                 statusMessage = "Raw transcript ready. Polish failed or needs API key."
                 lastError = error.localizedDescription
                 endPolishProgressTracking()
@@ -376,6 +390,8 @@ final class AppShell: ObservableObject {
 
                 self.polishedTranscript = polished.markdown
                 self.latestPolishedTranscript = polished.markdown
+                self.polishedTranscriptProviderID = polished.providerId
+                self.polishedTranscriptModel = polished.model
                 try self.sessionManager.writePolished(polished.markdown, for: &session)
                 try self.sessionManager.transition(&session, to: .completed, details: "Polish retry complete")
                 self.sessionState = .completed
@@ -430,6 +446,8 @@ final class AppShell: ObservableObject {
                 let transcript = try await self.transcriptionPipeline.run(audioFileURL: session.paths.audioURL, settings: retrySettings)
                 self.endTranscribeProgressTracking()
                 self.rawTranscript = transcript.text
+                self.rawTranscriptProviderID = transcript.providerId
+                self.rawTranscriptModel = transcript.model
                 try self.sessionManager.writeRaw(transcript.text, for: &session)
 
                 do {
@@ -446,6 +464,8 @@ final class AppShell: ObservableObject {
 
                     self.polishedTranscript = polished.markdown
                     self.latestPolishedTranscript = polished.markdown
+                    self.polishedTranscriptProviderID = polished.providerId
+                    self.polishedTranscriptModel = polished.model
                     try self.sessionManager.writePolished(polished.markdown, for: &session)
 
                     if self.settings.copyOnComplete {
@@ -457,6 +477,8 @@ final class AppShell: ObservableObject {
                     self.endPolishProgressTracking()
                 } catch {
                     self.polishedTranscript = ""
+                    self.polishedTranscriptProviderID = ""
+                    self.polishedTranscriptModel = ""
                     self.lastError = error.localizedDescription
                     self.statusMessage = "Re-transcription complete. Polish failed."
                     self.endPolishProgressTracking()

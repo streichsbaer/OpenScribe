@@ -6,7 +6,7 @@ struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
     @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
-    @State private var selectedRetryApproachID = "current"
+    @State private var selectedRetryApproachID = "default"
     @State private var selectedRetryPolishModel = ""
 
     var body: some View {
@@ -139,78 +139,96 @@ struct PopoverView: View {
         }) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center, spacing: 8) {
-                    Text("Raw transcript")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Raw transcript")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(rawSourceSummary)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
 
                     Spacer(minLength: 8)
 
-                    Picker("Transcriber", selection: $selectedRetryApproachID) {
-                        ForEach(retryApproaches) { approach in
-                            Text(approach.title)
-                                .tag(approach.id)
+                    HStack(alignment: .center, spacing: 8) {
+                        Picker("Transcriber", selection: $selectedRetryApproachID) {
+                            ForEach(retryApproaches) { approach in
+                                Text(approach.title)
+                                    .tag(approach.id)
+                            }
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .frame(width: 220)
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .controlSize(.small)
+                        .frame(width: 220)
 
-                    Button("Re-Transcribe") {
-                        shell.retryTranscription(
-                            temporaryProviderID: selectedRetryApproach.providerID,
-                            temporaryModel: selectedRetryApproach.model
-                        )
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(!canRetryTranscription)
+                        Button("Re-Transcribe") {
+                            shell.retryTranscription(
+                                temporaryProviderID: selectedRetryApproach.providerID,
+                                temporaryModel: selectedRetryApproach.model
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(!canRetryTranscription)
 
-                    Button {
-                        shell.copyRawTranscript()
-                    } label: {
-                        Image(systemName: "doc.on.doc")
+                        Button {
+                            shell.copyRawTranscript()
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy raw transcript")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Copy raw transcript")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
                 rawTranscriptPanel
 
                 HStack(alignment: .center, spacing: 8) {
-                    Text("Polished transcript")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Polished transcript")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(polishedSourceSummary)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
-                    Picker("Polish retry model", selection: $selectedRetryPolishModel) {
-                        ForEach(retryPolishModels, id: \.self) { model in
-                            Text(model)
-                                .tag(model)
+                    HStack(alignment: .center, spacing: 8) {
+                        Picker("Polish retry model", selection: $selectedRetryPolishModel) {
+                            ForEach(retryPolishModels, id: \.self) { model in
+                                Text(model)
+                                    .tag(model)
+                            }
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .frame(width: 210)
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .controlSize(.small)
+                        .frame(width: 210)
 
-                    Button("Retry Polish") {
-                        shell.retryPolish(temporaryModel: selectedRetryPolishModel)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(shell.rawTranscript.isEmpty)
+                        Button("Re-Polish") {
+                            shell.retryPolish(temporaryModel: selectedRetryPolishModel)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(shell.rawTranscript.isEmpty)
 
-                    Button {
-                        shell.copyLatestPolished()
-                    } label: {
-                        Image(systemName: "doc.on.doc")
+                        Button {
+                            shell.copyLatestPolished()
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy polished transcript")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Copy polished transcript")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
                 ScrollView {
@@ -433,15 +451,15 @@ struct PopoverView: View {
     }
 
     private var retryApproaches: [RetryTranscriptionApproach] {
-        let current = RetryTranscriptionApproach(
-            id: "current",
-            title: "Current (\(transcriberDisplayName(for: shell.settings.transcriptionProviderID)) / \(shell.settings.transcriptionModel))",
+        let `default` = RetryTranscriptionApproach(
+            id: "default",
+            title: "Default (\(providerDisplayName(for: shell.settings.transcriptionProviderID)) / \(shell.settings.transcriptionModel))",
             providerID: nil,
             model: nil
         )
 
         return [
-            current,
+            `default`,
             RetryTranscriptionApproach(id: "whispercpp-base", title: "Local whisper.cpp / base", providerID: "whispercpp", model: "base"),
             RetryTranscriptionApproach(id: "openai-gpt-4o-mini-transcribe", title: "OpenAI / gpt-4o-mini-transcribe", providerID: "openai_whisper", model: "gpt-4o-mini-transcribe"),
             RetryTranscriptionApproach(id: "openai-gpt-4o-transcribe", title: "OpenAI / gpt-4o-transcribe", providerID: "openai_whisper", model: "gpt-4o-transcribe"),
@@ -453,6 +471,26 @@ struct PopoverView: View {
 
     private var selectedRetryApproach: RetryTranscriptionApproach {
         retryApproaches.first(where: { $0.id == selectedRetryApproachID }) ?? retryApproaches[0]
+    }
+
+    private var rawSourceSummary: String {
+        sourceSummary(
+            transcript: shell.rawTranscript,
+            providerID: shell.rawTranscriptProviderID,
+            model: shell.rawTranscriptModel,
+            fallbackProviderID: shell.currentSession?.metadata.sttProvider,
+            fallbackModel: shell.currentSession?.metadata.sttModel
+        )
+    }
+
+    private var polishedSourceSummary: String {
+        sourceSummary(
+            transcript: shell.polishedTranscript,
+            providerID: shell.polishedTranscriptProviderID,
+            model: shell.polishedTranscriptModel,
+            fallbackProviderID: shell.currentSession?.metadata.polishProvider,
+            fallbackModel: shell.currentSession?.metadata.polishModel
+        )
     }
 
     private var retryPolishModels: [String] {
@@ -477,7 +515,7 @@ struct PopoverView: View {
         selectedRetryPolishModel = retryPolishModels.first ?? shell.settings.polishModel
     }
 
-    private func transcriberDisplayName(for providerID: String) -> String {
+    private func providerDisplayName(for providerID: String) -> String {
         switch providerID {
         case "whispercpp":
             return "Local whisper.cpp"
@@ -485,9 +523,33 @@ struct PopoverView: View {
             return "OpenAI"
         case "groq_whisper":
             return "Groq"
+        case "openai_polish":
+            return "OpenAI"
+        case "groq_polish":
+            return "Groq"
         default:
             return providerID
         }
+    }
+
+    private func sourceSummary(
+        transcript: String,
+        providerID: String,
+        model: String,
+        fallbackProviderID: String?,
+        fallbackModel: String?
+    ) -> String {
+        if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Used: none yet"
+        }
+
+        let resolvedProvider = providerID.isEmpty ? (fallbackProviderID ?? "") : providerID
+        let resolvedModel = model.isEmpty ? (fallbackModel ?? "") : model
+
+        if resolvedProvider.isEmpty || resolvedModel.isEmpty {
+            return "Used: unknown"
+        }
+        return "Used: \(providerDisplayName(for: resolvedProvider)) / \(resolvedModel)"
     }
 
     private var rawPlaceholderText: String {
