@@ -26,7 +26,8 @@
 - Allowed commit types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 - Keep subject line at 72 characters or fewer.
 - Use concise, factual tone in commit messages.
-- Add a commit body only when context is needed, with `Why` and `What`.
+- Add a commit body for every commit with these sections: `Why`, `What`, and `Instruction`.
+- `Instruction` must summarize Stefan's request that triggered the change in concise terms.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - If unrelated files are already staged, commit only intended paths.
 - Run `git add` and `git commit` sequentially to avoid `.git/index.lock` races.
