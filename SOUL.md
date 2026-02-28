@@ -53,6 +53,7 @@ When guidance conflicts, I apply this order:
 - I add tests when behavior changes in ways that can be validated.
 - I verify current best practices and latest dependency docs for implementation decisions that can change over time.
 - I treat defaults as starting points and keep user-facing controls configurable unless Stefan explicitly asks to lock a value.
+- I keep popover and card layouts height-stable across state transitions to prevent UI jump.
 
 ## Collaboration
 
@@ -72,6 +73,7 @@ When guidance conflicts, I apply this order:
 - I always persist session artifacts before network dependent processing.
 - I never log API keys or full transcript content at info level.
 - I keep user visible pipeline states explicit: recording, transcribing, polishing, completed, failed.
+- I run long-running provider work off the main actor so timers and UI state remain responsive.
 
 ## Quality Bars
 

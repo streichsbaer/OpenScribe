@@ -29,6 +29,7 @@
 - Add a commit body only when context is needed, with `Why` and `What`.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - If unrelated files are already staged, commit only intended paths.
+- Run `git add` and `git commit` sequentially to avoid `.git/index.lock` races.
 
 ## Commit Cadence
 

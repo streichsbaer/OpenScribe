@@ -45,10 +45,12 @@ Root: `~/Library/Application Support/SmartTranscript`
   - Groq chat API
 
 ## Transcript UI
-- Raw transcript is shown in an editable text area.
+- Raw transcript is shown in a read-only text panel.
 - Polished transcript is shown directly below raw text.
 - No raw/polished tab switcher.
 - Re-Transcribe action reruns transcription and polish for the current session audio using current provider settings.
+- Recording, transcribing, and polishing elapsed time is shown in the header state chip.
+- Loading text remains inside transcript text panels to keep popover height stable.
 
 ## Out of Scope (V1)
 - Streaming transcription.
@@ -56,7 +58,6 @@ Root: `~/Library/Application Support/SmartTranscript`
 - Speaker diarization and timestamps.
 
 ## Improvement Backlog
-- Show a clear processing state and elapsed timer while polish is running.
 - Add official GitHub and X brand icons in About once we finalize bundled asset choice.
 - Add a dedicated SmartTranscript repository link in About.
 - Explore always-on wake phrase mode:
