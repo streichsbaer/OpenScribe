@@ -32,6 +32,10 @@ swift build
 swift run SmartTranscript
 ```
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
 ## Agent Guidance
 
 - `SOUL.md` captures the app values and priorities that the agent follows.
