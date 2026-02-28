@@ -349,7 +349,7 @@ final class AppShell: ObservableObject {
         }
     }
 
-    func retryPolish() {
+    func retryPolish(temporaryModel: String? = nil) {
         Task { @MainActor [weak self] in
             guard let self,
                   var session = self.currentSession,
@@ -358,8 +358,12 @@ final class AppShell: ObservableObject {
             }
 
             do {
+                let effectiveModel = temporaryModel ?? self.settings.polishModel
+                var retrySettings = self.settings
+                retrySettings.polishModel = effectiveModel
+
                 session.metadata.polishProvider = self.settings.polishProviderID
-                session.metadata.polishModel = self.settings.polishModel
+                session.metadata.polishModel = effectiveModel
                 self.sessionState = .polishing
                 self.beginPolishProgressTracking()
                 try self.sessionManager.transition(&session, to: .polishing, details: "Retry polish")
@@ -367,7 +371,7 @@ final class AppShell: ObservableObject {
                 let polished = try await self.polishPipeline.run(
                     rawText: self.rawTranscript,
                     rulesMarkdown: rules,
-                    settings: self.settings
+                    settings: retrySettings
                 )
 
                 self.polishedTranscript = polished.markdown

@@ -7,6 +7,7 @@ struct PopoverView: View {
     @StateObject private var playbackManager = AudioPlaybackManager()
     @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
     @State private var selectedRetryApproachID = "current"
+    @State private var selectedRetryPolishModel = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -21,9 +22,16 @@ struct PopoverView: View {
         .frame(width: popoverWidth, height: popoverHeight)
         .onAppear {
             shell.updatePopoverSize(expandedTextPanels: expandedTextPanels)
+            syncRetryPolishSelection()
         }
         .onChange(of: expandedTextPanels) { _, newValue in
             shell.updatePopoverSize(expandedTextPanels: newValue)
+        }
+        .onChange(of: shell.settings.polishProviderID) { _, _ in
+            syncRetryPolishSelection()
+        }
+        .onChange(of: shell.settings.polishModel) { _, _ in
+            syncRetryPolishSelection()
         }
     }
 
@@ -117,7 +125,18 @@ struct PopoverView: View {
     }
 
     private var textSection: some View {
-        card(title: "Text") {
+        card(title: "Text", trailing: {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    expandedTextPanels.toggle()
+                }
+            } label: {
+                Image(systemName: expandedTextPanels ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help(expandedTextPanels ? "Compact transcript panels" : "Expand transcript panels")
+        }) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center, spacing: 8) {
                     Text("Raw transcript")
@@ -125,12 +144,6 @@ struct PopoverView: View {
                         .foregroundStyle(.secondary)
 
                     Spacer(minLength: 8)
-
-                    Button("Copy Raw") {
-                        shell.copyRawTranscript()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
 
                     Picker("Transcriber", selection: $selectedRetryApproachID) {
                         ForEach(retryApproaches) { approach in
@@ -153,13 +166,14 @@ struct PopoverView: View {
                     .controlSize(.small)
                     .disabled(!canRetryTranscription)
 
-                    Button(expandedTextPanels ? "Compact" : "Expand") {
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            expandedTextPanels.toggle()
-                        }
+                    Button {
+                        shell.copyRawTranscript()
+                    } label: {
+                        Image(systemName: "doc.on.doc")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .help("Copy raw transcript")
                 }
 
                 rawTranscriptPanel
@@ -171,18 +185,32 @@ struct PopoverView: View {
 
                     Spacer()
 
-                    Button("Copy Polished") {
-                        shell.copyLatestPolished()
+                    Picker("Polish retry model", selection: $selectedRetryPolishModel) {
+                        ForEach(retryPolishModels, id: \.self) { model in
+                            Text(model)
+                                .tag(model)
+                        }
                     }
-                    .buttonStyle(.bordered)
+                    .labelsHidden()
+                    .pickerStyle(.menu)
                     .controlSize(.small)
+                    .frame(width: 210)
 
                     Button("Retry Polish") {
-                        shell.retryPolish()
+                        shell.retryPolish(temporaryModel: selectedRetryPolishModel)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(shell.rawTranscript.isEmpty)
+
+                    Button {
+                        shell.copyLatestPolished()
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Copy polished transcript")
                 }
 
                 ScrollView {
@@ -195,7 +223,6 @@ struct PopoverView: View {
                 .padding(8)
                 .background(Color(NSColor.textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-
             }
         }
     }
@@ -284,6 +311,33 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
+
+            content()
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private func card<Content: View, Trailing: View>(
+        title: String,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                trailing()
+            }
 
             content()
         }
@@ -399,6 +453,28 @@ struct PopoverView: View {
 
     private var selectedRetryApproach: RetryTranscriptionApproach {
         retryApproaches.first(where: { $0.id == selectedRetryApproachID }) ?? retryApproaches[0]
+    }
+
+    private var retryPolishModels: [String] {
+        switch shell.settings.polishProviderID {
+        case "openai_polish":
+            return ["gpt-5-mini"]
+        case "groq_polish":
+            return ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+        default:
+            return [shell.settings.polishModel]
+        }
+    }
+
+    private func syncRetryPolishSelection() {
+        if retryPolishModels.contains(selectedRetryPolishModel) {
+            return
+        }
+        if retryPolishModels.contains(shell.settings.polishModel) {
+            selectedRetryPolishModel = shell.settings.polishModel
+            return
+        }
+        selectedRetryPolishModel = retryPolishModels.first ?? shell.settings.polishModel
     }
 
     private func transcriberDisplayName(for providerID: String) -> String {
