@@ -10,6 +10,25 @@ enum SessionState: String, Codable {
     case polishing
     case completed
     case failed
+
+    var displayLabel: String {
+        switch self {
+        case .idle:
+            return "Idle"
+        case .recording:
+            return "Recording"
+        case .finalizingAudio:
+            return "Finalizing audio"
+        case .transcribing:
+            return "Transcribing"
+        case .polishing:
+            return "Polishing"
+        case .completed:
+            return "Completed"
+        case .failed:
+            return "Failed"
+        }
+    }
 }
 
 struct TranscriptResult: Codable {

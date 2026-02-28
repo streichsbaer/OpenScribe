@@ -105,50 +105,37 @@ final class ModelDownloadManager: ObservableObject {
             progress = 0
         }
 
-        let request = URLRequest(url: asset.downloadURL, timeoutInterval: 600)
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
-
-        guard let contentLength = response.expectedContentLength > 0 ? response.expectedContentLength : nil else {
-            return try await writeWithoutProgress(stream: bytes, destination: destination, asset: asset)
-        }
-
         let temp = destination.deletingLastPathComponent().appendingPathComponent("\(UUID().uuidString).download")
-        fileManager.createFile(atPath: temp.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: temp)
+        let request = URLRequest(
+            url: asset.downloadURL,
+            cachePolicy: .reloadIgnoringLocalCacheData,
+            timeoutInterval: 600
+        )
 
-        var received: Int64 = 0
-        for try await chunk in bytes {
-            try handle.write(contentsOf: Data([chunk]))
-            received += 1
-            progress = min(1, Double(received) / Double(contentLength))
+        let progressDelegate = DownloadProgressDelegate { [weak self] value in
+            Task { @MainActor [weak self] in
+                self?.progress = value
+            }
         }
 
-        try handle.close()
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 600
+        configuration.timeoutIntervalForResource = 3_600
+        configuration.waitsForConnectivity = true
+        let session = URLSession(configuration: configuration)
+        defer { session.finishTasksAndInvalidate() }
+
+        let (downloadedURL, _) = try await session.download(for: request, delegate: progressDelegate)
+        if fileManager.fileExists(atPath: temp.path) {
+            try fileManager.removeItem(at: temp)
+        }
+        try fileManager.moveItem(at: downloadedURL, to: temp)
+        progress = 1
 
         try validate(asset: asset, file: temp)
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
         }
-        try fileManager.moveItem(at: temp, to: destination)
-        return destination
-    }
-
-    @MainActor
-    private func writeWithoutProgress(stream: URLSession.AsyncBytes, destination: URL, asset: ModelAsset) async throws -> URL {
-        let temp = destination.deletingLastPathComponent().appendingPathComponent("\(UUID().uuidString).download")
-        fileManager.createFile(atPath: temp.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: temp)
-        for try await byte in stream {
-            try handle.write(contentsOf: Data([byte]))
-        }
-        try handle.close()
-
-        try validate(asset: asset, file: temp)
-
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-
         try fileManager.moveItem(at: temp, to: destination)
         return destination
     }
@@ -170,5 +157,29 @@ final class ModelDownloadManager: ObservableObject {
                 throw ProviderError.processFailed("Downloaded model hash mismatch for \(asset.id).")
             }
         }
+    }
+}
+
+private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let onProgress: (Double) -> Void
+
+    init(onProgress: @escaping (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {}
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        guard totalBytesExpectedToWrite > 0 else {
+            return
+        }
+        let value = min(1, max(0, Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)))
+        onProgress(value)
     }
 }

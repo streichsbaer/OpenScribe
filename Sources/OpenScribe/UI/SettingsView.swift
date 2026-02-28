@@ -268,7 +268,7 @@ struct SettingsView: View {
 
             settingsCard("STATUS") {
                 settingRow("Session state") {
-                    Text(shell.sessionState.rawValue.capitalized)
+                    Text(shell.sessionState.displayLabel)
                         .foregroundStyle(.secondary)
                 }
 

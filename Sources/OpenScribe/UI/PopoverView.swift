@@ -91,13 +91,14 @@ struct PopoverView: View {
     private var sessionSection: some View {
         card(title: "Session") {
             VStack(alignment: .leading, spacing: 10) {
-                keyValueRow("State", shell.sessionState.rawValue)
+                keyValueRow("State", shell.sessionState.displayLabel)
 
                 HStack(spacing: 8) {
-                    Button(shell.sessionState == .recording ? "Stop (Fn+Space)" : "Start (Fn+Space)") {
+                    Button(startStopButtonLabel) {
                         shell.toggleRecording()
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(startStopButtonDisabled)
 
                     if let audioURL = shell.currentSession?.paths.audioURL,
                        FileManager.default.fileExists(atPath: audioURL.path) {
@@ -309,7 +310,7 @@ struct PopoverView: View {
         case .polishing:
             stateChipLabel("Polishing \(formattedDuration(shell.polishElapsedSeconds))", color: .mint)
         default:
-            stateChipLabel(shell.sessionState.rawValue.capitalized, color: stateChipColor)
+            stateChipLabel(shell.sessionState.displayLabel, color: stateChipColor)
         }
     }
 
@@ -463,6 +464,26 @@ struct PopoverView: View {
             return false
         case .idle, .completed, .failed:
             return true
+        }
+    }
+
+    private var startStopButtonLabel: String {
+        switch shell.sessionState {
+        case .recording:
+            return "Stop (Fn+Space)"
+        case .finalizingAudio, .transcribing, .polishing:
+            return "Processing..."
+        case .idle, .completed, .failed:
+            return "Start (Fn+Space)"
+        }
+    }
+
+    private var startStopButtonDisabled: Bool {
+        switch shell.sessionState {
+        case .finalizingAudio, .transcribing, .polishing:
+            return true
+        case .idle, .recording, .completed, .failed:
+            return false
         }
     }
 
