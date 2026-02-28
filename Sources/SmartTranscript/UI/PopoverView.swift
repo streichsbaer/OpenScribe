@@ -33,24 +33,7 @@ struct PopoverView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 4) {
-                stateChip
-
-                if shell.sessionState == .recording,
-                   let createdAt = shell.currentSession?.metadata.createdAt {
-                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                        Text("Recording \(formattedDuration(Int(timeline.date.timeIntervalSince(createdAt))))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                } else if shell.sessionState == .polishing {
-                    Text("Polishing \(formattedDuration(shell.polishElapsedSeconds))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            }
+            stateChip
         }
     }
 
@@ -157,16 +140,6 @@ struct PopoverView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if shell.sessionState == .polishing {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Polishing in progress")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 ScrollView {
                     Text(polishedBodyText)
                         .font(.body)
@@ -243,13 +216,35 @@ struct PopoverView: View {
         }
     }
 
+    @ViewBuilder
     private var stateChip: some View {
-        Text(shell.sessionState.rawValue.capitalized)
+        switch shell.sessionState {
+        case .recording:
+            if let createdAt = shell.currentSession?.metadata.createdAt {
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    stateChipLabel(
+                        "Recording \(formattedDuration(Int(timeline.date.timeIntervalSince(createdAt))))",
+                        color: .green
+                    )
+                }
+            } else {
+                stateChipLabel("Recording", color: .green)
+            }
+        case .polishing:
+            stateChipLabel("Polishing \(formattedDuration(shell.polishElapsedSeconds))", color: .orange)
+        default:
+            stateChipLabel(shell.sessionState.rawValue.capitalized, color: stateChipColor)
+        }
+    }
+
+    private func stateChipLabel(_ label: String, color: Color) -> some View {
+        Text(label)
             .font(.caption.weight(.semibold))
+            .monospacedDigit()
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(stateChipColor.opacity(0.15))
-            .foregroundColor(stateChipColor)
+            .background(color.opacity(0.15))
+            .foregroundColor(color)
             .clipShape(Capsule())
     }
 
