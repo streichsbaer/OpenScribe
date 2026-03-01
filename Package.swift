@@ -31,7 +31,10 @@ let package = Package(
         ),
         .testTarget(
             name: "OpenScribeTests",
-            dependencies: ["OpenScribe"]
+            dependencies: ["OpenScribe"],
+            resources: [
+                .process("Fixtures")
+            ]
         )
     ]
 )
