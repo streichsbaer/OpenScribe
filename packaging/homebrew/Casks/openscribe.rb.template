@@ -1,0 +1,11 @@
+cask "openscribe" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "https://github.com/streichsbaer/OpenScribe/releases/download/v#{version}/OpenScribe-#{version}.zip"
+  name "OpenScribe"
+  desc "Native macOS menubar dictation app"
+  homepage "https://github.com/streichsbaer/OpenScribe"
+
+  app "OpenScribe.app"
+end

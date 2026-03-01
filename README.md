@@ -33,6 +33,21 @@ swift build
 swift run OpenScribe
 ```
 
+## Release
+
+- Build local release app bundle and zip:
+
+```bash
+zsh Scripts/build_release_app.sh
+```
+
+- Full shipping guide:
+  - [docs/release.md](docs/release.md)
+- Testing and smoke workflow:
+  - [docs/testing.md](docs/testing.md)
+- Homebrew cask template:
+  - [packaging/homebrew/Casks/openscribe.rb.template](packaging/homebrew/Casks/openscribe.rb.template)
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
@@ -53,4 +68,3 @@ MIT. See [LICENSE](LICENSE).
   - `OPENAI_API_KEY`
   - `GROQ_API_KEY`
   - Keychain values take precedence over environment values.
-- `swift test` currently requires a full Xcode toolchain on this machine (`xcodebuild` is not installed in the active developer directory).
