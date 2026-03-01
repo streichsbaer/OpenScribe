@@ -8,5 +8,13 @@ struct OpenScribeApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    appDelegate.openSettingsWindow()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }

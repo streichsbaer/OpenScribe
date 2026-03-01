@@ -19,4 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusBarController?.runUISmokeCaptureIfConfigured()
         }
     }
+
+    func openSettingsWindow() {
+        statusBarController?.openSettingsFromShortcut()
+    }
 }

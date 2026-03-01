@@ -67,9 +67,28 @@ final class StatusBarController: NSObject {
 
         if event.type == .rightMouseUp {
             let menu = NSMenu()
-            menu.addItem(withTitle: "Settings", action: #selector(openSettings), keyEquivalent: ",")
+            menu.autoenablesItems = false
+
+            let settingsItem = NSMenuItem(
+                title: "Settings",
+                action: #selector(openSettings),
+                keyEquivalent: ","
+            )
+            settingsItem.target = self
+            settingsItem.isEnabled = true
+            menu.addItem(settingsItem)
+
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Quit OpenScribe", action: #selector(quitApp), keyEquivalent: "q")
+
+            let quitItem = NSMenuItem(
+                title: "Quit OpenScribe",
+                action: #selector(quitApp),
+                keyEquivalent: "q"
+            )
+            quitItem.target = self
+            quitItem.isEnabled = true
+            menu.addItem(quitItem)
+
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
             statusItem.menu = nil
@@ -81,6 +100,10 @@ final class StatusBarController: NSObject {
 
     @objc private func openSettings() {
         settingsWindowController.show()
+    }
+
+    func openSettingsFromShortcut() {
+        openSettings()
     }
 
     func runUISmokeCaptureIfConfigured() {
