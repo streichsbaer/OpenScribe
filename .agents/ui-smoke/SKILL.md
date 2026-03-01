@@ -21,6 +21,7 @@ Run autonomous UI smoke checks for OpenScribe with reproducible artifacts.
 - `settings-rules.png`
 - `settings-data.png`
 - `settings-about.png`
+- `menubar-icon-<mode>-<state>.png` (18 files across 3 appearance modes and 6 icon states)
 - `ui-smoke-status.txt`
 - `ui-smoke-debug.txt`
 - `report.md`
@@ -33,9 +34,10 @@ All outputs are stored in `artifacts/ui-smoke/<timestamp>/` by default.
 2. Run tests (`swift test`)
 3. Launch app in smoke mode (`OPENSCRIBE_UI_SMOKE=1 swift run OpenScribe`)
 4. App captures popover + settings screenshots internally (including all settings tabs)
-5. Script validates screenshot artifacts and writes markdown report
+5. App captures menubar icon state snapshots for `system`, `light`, and `dark` appearances.
+6. Script validates screenshot artifacts and writes markdown report
 
 ## Notes
 
 - Internal capture avoids transient macOS focus/automation races for popover windows.
-- The Settings screenshot step is best effort and may fail if macOS blocks automation.
+- The run is strict: missing required screenshots causes a failing exit code.

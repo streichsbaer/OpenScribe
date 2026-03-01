@@ -24,6 +24,8 @@ if [[ -z "$OUT_DIR" ]]; then
 fi
 
 mkdir -p "$OUT_DIR"
+appearance_modes=(system light dark)
+icon_states=(idle recording-working recording-paused recording-no-audio transcribing polishing)
 rm -f "$OUT_DIR"/build.log \
       "$OUT_DIR"/test.log \
       "$OUT_DIR"/run.log \
@@ -38,6 +40,11 @@ rm -f "$OUT_DIR"/build.log \
       "$OUT_DIR"/settings-rules.png \
       "$OUT_DIR"/settings-data.png \
       "$OUT_DIR"/settings-about.png
+for mode in "${appearance_modes[@]}"; do
+  for state in "${icon_states[@]}"; do
+    rm -f "$OUT_DIR/menubar-icon-$mode-$state.png"
+  done
+done
 
 echo "[ui-smoke] output: $OUT_DIR"
 
@@ -60,6 +67,7 @@ app_launch_status="pass"
 popover_capture_status="skipped"
 settings_capture_status="skipped"
 settings_tab_capture_status="skipped"
+menubar_icon_capture_status="skipped"
 
 echo "[ui-smoke] launch app (internal capture mode)"
 if OPENSCRIBE_UI_SMOKE=1 OPENSCRIBE_UI_SMOKE_OUT="$OUT_DIR" swift run OpenScribe >"$OUT_DIR/run.log" 2>&1 & then
@@ -77,6 +85,11 @@ if OPENSCRIBE_UI_SMOKE=1 OPENSCRIBE_UI_SMOKE_OUT="$OUT_DIR" swift run OpenScribe
     "$OUT_DIR/settings-about.png"
     "$OUT_DIR/ui-smoke-status.txt"
   )
+  for mode in "${appearance_modes[@]}"; do
+    for state in "${icon_states[@]}"; do
+      expected_files+=("$OUT_DIR/menubar-icon-$mode-$state.png")
+    done
+  done
   while [[ $elapsed -lt $timeout_seconds ]]; do
     all_ready=1
     for expected_file in "${expected_files[@]}"; do
@@ -136,6 +149,21 @@ else
   settings_tab_capture_status="missing:$missing_tab_count"
 fi
 
+missing_icon_count=0
+for mode in "${appearance_modes[@]}"; do
+  for state in "${icon_states[@]}"; do
+    icon_file="$OUT_DIR/menubar-icon-$mode-$state.png"
+    if [[ ! -s "$icon_file" ]]; then
+      missing_icon_count=$((missing_icon_count + 1))
+    fi
+  done
+done
+if [[ $missing_icon_count -eq 0 ]]; then
+  menubar_icon_capture_status="pass"
+else
+  menubar_icon_capture_status="missing:$missing_icon_count"
+fi
+
 overall_status=0
 if [[ "$build_status" != "pass" ]]; then
   overall_status=1
@@ -155,6 +183,9 @@ fi
 if [[ "$settings_tab_capture_status" != "pass" ]]; then
   overall_status=1
 fi
+if [[ "$menubar_icon_capture_status" != "pass" ]]; then
+  overall_status=1
+fi
 
 cat > "$OUT_DIR/report.md" <<REPORT
 # UI Smoke Report
@@ -166,6 +197,7 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - OpenScribe window screenshot: $popover_capture_status
 - Settings window screenshot: $settings_capture_status
 - Settings tab screenshots: $settings_tab_capture_status
+- Menubar icon screenshots: $menubar_icon_capture_status
 
 ## Artifacts
 
@@ -182,6 +214,7 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - settings-rules.png
 - settings-data.png
 - settings-about.png
+- menubar-icon-<mode>-<state>.png (18 files)
 
 ## Notes
 

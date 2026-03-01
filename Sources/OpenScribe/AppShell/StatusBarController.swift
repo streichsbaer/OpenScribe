@@ -112,6 +112,7 @@ final class StatusBarController: NSObject {
 
         var popoverStatus = "fail"
         var settingsStatus = "fail"
+        var iconStatus = "fail"
         var debugLines: [String] = []
         debugLines.append("statusButton=\(statusItem.button != nil)")
         let originalPopoverBehavior = popover.behavior
@@ -169,12 +170,17 @@ final class StatusBarController: NSObject {
             settingsStatus = "partial"
         }
 
+        let iconCaptureFailures = captureMenubarIconSnapshots(outputDirectory: outputDirectory, debugLines: &debugLines)
+        iconStatus = iconCaptureFailures == 0 ? "pass" : "missing:\(iconCaptureFailures)"
+
         popover.behavior = originalPopoverBehavior
 
         let summary = """
         popover=\(popoverStatus)
         settings=\(settingsStatus)
         settingsTabsFailed=\(tabCaptureFailures)
+        menubarIcons=\(iconStatus)
+        menubarIconsFailed=\(iconCaptureFailures)
         """
         try? summary.write(
             to: outputDirectory.appendingPathComponent("ui-smoke-status.txt"),
@@ -186,6 +192,87 @@ final class StatusBarController: NSObject {
             atomically: true,
             encoding: .utf8
         )
+    }
+
+    private func captureMenubarIconSnapshots(outputDirectory: URL, debugLines: inout [String]) -> Int {
+        let appearanceModes: [(fileTag: String, mode: AppearanceMode)] = [
+            ("system", .system),
+            ("light", .light),
+            ("dark", .dark)
+        ]
+        let iconStates: [(fileTag: String, state: MicIconState, blink: Bool)] = [
+            ("idle", .idle, false),
+            ("recording-working", .working, true),
+            ("recording-paused", .paused, false),
+            ("recording-no-audio", .noAudio, true),
+            ("transcribing", .transcribing, true),
+            ("polishing", .polishing, true)
+        ]
+
+        let originalMode = currentAppearanceMode
+        var failures = 0
+
+        for appearance in appearanceModes {
+            currentAppearanceMode = appearance.mode
+            applyAppearanceSettings()
+
+            for icon in iconStates {
+                let fileURL = outputDirectory.appendingPathComponent("menubar-icon-\(appearance.fileTag)-\(icon.fileTag).png")
+                guard let image = drawStatusIcon(for: icon.state, blinkPhase: icon.blink) else {
+                    failures += 1
+                    debugLines.append("menubarIcon[\(appearance.fileTag)/\(icon.fileTag)]=draw-fail")
+                    continue
+                }
+
+                if writeMenubarIconPreview(image, to: fileURL) {
+                    debugLines.append("menubarIcon[\(appearance.fileTag)/\(icon.fileTag)]=pass")
+                } else {
+                    failures += 1
+                    debugLines.append("menubarIcon[\(appearance.fileTag)/\(icon.fileTag)]=write-fail")
+                }
+            }
+        }
+
+        currentAppearanceMode = originalMode
+        applyAppearanceSettings()
+        return failures
+    }
+
+    private func writeMenubarIconPreview(_ iconImage: NSImage, to outputURL: URL) -> Bool {
+        let canvasSide: CGFloat = 72
+        let iconSide: CGFloat = 54
+        let preview = NSImage(size: NSSize(width: canvasSide, height: canvasSide))
+        preview.lockFocus()
+
+        NSColor.clear.setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: canvasSide, height: canvasSide)).fill()
+
+        let iconRect = NSRect(
+            x: (canvasSide - iconSide) / 2,
+            y: (canvasSide - iconSide) / 2,
+            width: iconSide,
+            height: iconSide
+        )
+        iconImage.draw(
+            in: iconRect,
+            from: NSRect(origin: .zero, size: iconImage.size),
+            operation: .sourceOver,
+            fraction: 1.0
+        )
+        preview.unlockFocus()
+
+        guard let tiff = preview.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let pngData = rep.representation(using: .png, properties: [:]) else {
+            return false
+        }
+
+        do {
+            try pngData.write(to: outputURL, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func showPopoverForUISmoke() -> Bool {
