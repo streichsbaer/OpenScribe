@@ -160,6 +160,7 @@ final class AppShell: ObservableObject {
 
         registerHotkeys()
         applyAppearanceMode()
+        prefetchProviderCatalogsOnLaunch()
     }
 
     var settings: AppSettings {
@@ -322,7 +323,7 @@ final class AppShell: ObservableObject {
     func updatePopoverSize(expandedTextPanels: Bool) {
         let size = expandedTextPanels
             ? CGSize(width: 620, height: 980)
-            : CGSize(width: 540, height: 760)
+            : CGSize(width: 540, height: 700)
         updatePopoverSizeHandler?(size)
     }
 
@@ -474,7 +475,7 @@ final class AppShell: ObservableObject {
         }
     }
 
-    func retryPolish(temporaryModel: String? = nil) {
+    func retryPolish(temporaryProviderID: String? = nil, temporaryModel: String? = nil) {
         Task { @MainActor [weak self] in
             guard let self,
                   var session = self.currentSession,
@@ -488,11 +489,13 @@ final class AppShell: ObservableObject {
             }
 
             do {
+                let effectiveProviderID = temporaryProviderID ?? self.settings.polishProviderID
                 let effectiveModel = temporaryModel ?? self.settings.polishModel
                 var retrySettings = self.settings
+                retrySettings.polishProviderID = effectiveProviderID
                 retrySettings.polishModel = effectiveModel
 
-                session.metadata.polishProvider = self.settings.polishProviderID
+                session.metadata.polishProvider = effectiveProviderID
                 session.metadata.polishModel = effectiveModel
                 self.sessionState = .polishing
                 self.beginPolishProgressTracking()
@@ -730,7 +733,7 @@ final class AppShell: ObservableObject {
         return providerConnectivityByBackend[backend.statusID] ?? .idle
     }
 
-    func verifyProvider(for providerID: String) {
+    func verifyProvider(for providerID: String, updateStatusMessage: Bool = true) {
         guard let backend = backend(for: providerID) else {
             return
         }
@@ -746,19 +749,38 @@ final class AppShell: ObservableObject {
                     state: .verified,
                     detail: "Verified (\(models.count) models)"
                 )
-                self.statusMessage = "\(backend.displayName) verified"
+                if updateStatusMessage {
+                    self.statusMessage = "\(backend.displayName) verified"
+                }
             } catch {
                 self.providerConnectivityByBackend[backend.statusID] = .init(
                     state: .failed,
                     detail: "Failed: \(error.localizedDescription)"
                 )
-                self.statusMessage = "\(backend.displayName) verification failed"
+                if updateStatusMessage {
+                    self.statusMessage = "\(backend.displayName) verification failed"
+                }
             }
         }
     }
 
     func refreshModels(for providerID: String) {
         verifyProvider(for: providerID)
+    }
+
+    private func prefetchProviderCatalogsOnLaunch() {
+        let verificationPlan: [(KeychainEntry, String)] = [
+            (.openAI, "openai_whisper"),
+            (.groq, "groq_whisper"),
+            (.openRouter, "openrouter_transcribe"),
+            (.gemini, "gemini_transcribe")
+        ]
+
+        for (entry, providerID) in verificationPlan {
+            if apiKeyResolver.resolve(entry).value != nil {
+                verifyProvider(for: providerID, updateStatusMessage: false)
+            }
+        }
     }
 
     private func registerHotkeys() {

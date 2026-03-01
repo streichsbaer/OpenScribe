@@ -6,8 +6,19 @@ struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
     @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
-    @State private var selectedRetryApproachID = "whispercpp-base"
-    @State private var selectedRetryPolishModel = ""
+    @State private var selectedRetryApproachID = ""
+    @State private var selectedRetryPolishOptionID = ""
+    @State private var retryTranscriptionFilter = ""
+    @State private var retryPolishFilter = ""
+    private let openAITranscriptionFallbackModels = ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"]
+    private let groqTranscriptionFallbackModels = ["whisper-large-v3", "whisper-large-v3-turbo"]
+    private let openRouterTranscriptionFallbackModels = ["google/gemini-2.5-flash", "openai/gpt-4o-mini"]
+    private let geminiTranscriptionFallbackModels = ["gemini-3-flash-preview", "gemini-2.5-flash"]
+    private let openAIPolishFallbackModels = ["gpt-5-nano", "gpt-5-mini"]
+    private let groqPolishFallbackModels = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+    private let openRouterPolishFallbackModels = ["openai/gpt-5-nano", "openai/gpt-5-mini", "google/gemini-2.5-flash"]
+    private let geminiPolishFallbackModels = ["gemini-2.5-flash"]
+    private let infoLabelWidth: CGFloat = 44
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,7 +30,8 @@ struct PopoverView: View {
             footerSection
         }
         .padding(12)
-        .frame(width: popoverWidth, height: popoverHeight)
+        .frame(width: popoverWidth)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear {
             shell.updatePopoverSize(expandedTextPanels: expandedTextPanels)
             syncRetryPolishSelection()
@@ -64,21 +76,24 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 8) {
                 keyValueRow("Device", shell.currentSession?.metadata.inputDeviceName ?? AVAudioSessionBridge.defaultInputName)
 
-                HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Level")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.gray.opacity(0.18))
-                            .frame(height: 9)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.gray.opacity(0.18))
+                                .frame(height: 9)
 
-                        Capsule()
-                            .fill(shell.microphoneIndicatorColorName == "green" ? Color.green : Color.gray)
-                            .frame(width: max(8, CGFloat(shell.meterLevel) * 240), height: 9)
+                            Capsule()
+                                .fill(shell.microphoneIndicatorColorName == "green" ? Color.green : Color.gray)
+                                .frame(width: max(6, CGFloat(shell.meterLevel) * geometry.size.width), height: 9)
+                        }
                     }
-                    .frame(width: 240)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 9)
                 }
 
                 Text(permissionText)
@@ -152,42 +167,15 @@ struct PopoverView: View {
             .help(expandedTextPanels ? "Compact transcript panels" : "Expand transcript panels")
         }) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Raw transcript")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(rawSourceSummary)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-
-                    Spacer(minLength: 8)
+                transcriptSubsection {
+                    transcriptHeaderTitle(title: "Raw transcript", sourceSummary: rawSourceSummary)
+                    rawTranscriptPanel
 
                     HStack(alignment: .center, spacing: 8) {
-                        Picker("Transcriber", selection: $selectedRetryApproachID) {
-                            ForEach(retryApproaches) { approach in
-                                Text(approach.title)
-                                    .tag(approach.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .fixedSize(horizontal: true, vertical: false)
-
-                        Button("Re-Transcribe") {
-                            shell.retryTranscription(
-                                temporaryProviderID: selectedRetryApproach.providerID,
-                                temporaryModel: selectedRetryApproach.model
-                            )
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(!canRetryTranscription)
-
+                        Text("Retry with another model")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
                         Button {
                             shell.copyRawTranscript()
                         } label: {
@@ -196,45 +184,56 @@ struct PopoverView: View {
                         .buttonStyle(.borderless)
                         .help("Copy raw transcript")
                     }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-
-                rawTranscriptPanel
-
-                HStack(alignment: .center, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Polished transcript")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(polishedSourceSummary)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-
-                    Spacer(minLength: 8)
 
                     HStack(alignment: .center, spacing: 8) {
-                        Picker("Polish retry model", selection: $selectedRetryPolishModel) {
-                            ForEach(retryPolishModels, id: \.self) { model in
-                                Text(model)
-                                    .tag(model)
+                        TextField("Search provider/model", text: $retryTranscriptionFilter)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: compactControls ? 160 : 190)
+
+                        Picker("Transcriber", selection: $selectedRetryApproachID) {
+                            ForEach(displayedRetryApproaches) { approach in
+                                Text(approach.title)
+                                    .tag(approach.id)
                             }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .controlSize(.small)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .disabled(!shell.settings.polishEnabled)
+                        .frame(maxWidth: .infinity)
 
-                        Button("Re-Polish") {
-                            shell.retryPolish(temporaryModel: selectedRetryPolishModel)
+                        Button {
+                            shell.retryTranscription(
+                                temporaryProviderID: selectedRetryApproach.providerID,
+                                temporaryModel: selectedRetryApproach.model
+                            )
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .disabled(shell.rawTranscript.isEmpty || !shell.settings.polishEnabled)
+                        .disabled(!canRetryTranscription)
+                        .help("Rerun raw transcription using selected provider/model")
+                    }
+                }
 
+                transcriptSubsection {
+                    transcriptHeaderTitle(title: "Polished transcript", sourceSummary: polishedSourceSummary)
+                    ScrollView {
+                        Text(polishedBodyText)
+                            .font(.body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .frame(height: polishedPanelHeight)
+                    .padding(8)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    HStack(alignment: .center, spacing: 8) {
+                        Text("Retry with another model")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
                         Button {
                             shell.copyLatestPolished()
                         } label: {
@@ -243,19 +242,39 @@ struct PopoverView: View {
                         .buttonStyle(.borderless)
                         .help("Copy polished transcript")
                     }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                }
 
-                ScrollView {
-                    Text(polishedBodyText)
-                        .font(.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
+                    HStack(alignment: .center, spacing: 8) {
+                        TextField("Search provider/model", text: $retryPolishFilter)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: compactControls ? 160 : 190)
+                            .disabled(!shell.settings.polishEnabled)
+
+                        Picker("Polish retry option", selection: $selectedRetryPolishOptionID) {
+                            ForEach(displayedRetryPolishOptions) { option in
+                                Text(option.title)
+                                    .tag(option.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                        .disabled(!shell.settings.polishEnabled)
+
+                        Button {
+                            shell.retryPolish(
+                                temporaryProviderID: selectedRetryPolishOption.providerID,
+                                temporaryModel: selectedRetryPolishOption.model
+                            )
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(shell.rawTranscript.isEmpty || !shell.settings.polishEnabled)
+                        .help("Rerun polish using selected provider/model")
+                    }
                 }
-                .frame(height: textPanelHeight)
-                .padding(8)
-                .background(Color(NSColor.textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
     }
@@ -389,11 +408,11 @@ struct PopoverView: View {
     }
 
     private func keyValueRow(_ key: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(key)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .frame(width: 76, alignment: .leading)
+                .frame(width: infoLabelWidth, alignment: .leading)
 
             Text(value)
                 .font(.subheadline)
@@ -433,8 +452,51 @@ struct PopoverView: View {
         return String(format: "%02d:%02d", minutes, remainder)
     }
 
-    private var textPanelHeight: CGFloat {
-        expandedTextPanels ? 220 : 120
+    private var rawPanelHeight: CGFloat {
+        panelHeight(hasContent: !rawPanelIsPlaceholder)
+    }
+
+    private var polishedPanelHeight: CGFloat {
+        panelHeight(hasContent: !shell.polishedTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    private func panelHeight(hasContent: Bool) -> CGFloat {
+        if expandedTextPanels {
+            return hasContent ? 220 : 150
+        }
+        return hasContent ? 110 : 78
+    }
+
+    private var compactControls: Bool {
+        !expandedTextPanels
+    }
+
+    private func transcriptHeaderTitle(title: String, sourceSummary: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+            Text(sourceSummary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+    }
+
+    private func transcriptSubsection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            content()
+        }
+        .padding(9)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(NSColor.textBackgroundColor).opacity(0.36))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -446,7 +508,7 @@ struct PopoverView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }
-        .frame(height: textPanelHeight)
+        .frame(height: rawPanelHeight)
         .padding(8)
         .background(Color(NSColor.textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -487,26 +549,43 @@ struct PopoverView: View {
         }
     }
 
-    private var retryApproaches: [RetryTranscriptionApproach] {
-        return [
-            RetryTranscriptionApproach(id: "whispercpp-base", title: "Local whisper.cpp / base", providerID: "whispercpp", model: "base"),
-            RetryTranscriptionApproach(id: "whispercpp-tiny", title: "Local whisper.cpp / tiny", providerID: "whispercpp", model: "tiny"),
-            RetryTranscriptionApproach(id: "whispercpp-small", title: "Local whisper.cpp / small", providerID: "whispercpp", model: "small"),
-            RetryTranscriptionApproach(id: "whispercpp-medium", title: "Local whisper.cpp / medium", providerID: "whispercpp", model: "medium"),
-            RetryTranscriptionApproach(id: "openai-gpt-4o-mini-transcribe", title: "OpenAI / gpt-4o-mini-transcribe", providerID: "openai_whisper", model: "gpt-4o-mini-transcribe"),
-            RetryTranscriptionApproach(id: "openai-gpt-4o-transcribe", title: "OpenAI / gpt-4o-transcribe", providerID: "openai_whisper", model: "gpt-4o-transcribe"),
-            RetryTranscriptionApproach(id: "openai-whisper-1", title: "OpenAI / whisper-1", providerID: "openai_whisper", model: "whisper-1"),
-            RetryTranscriptionApproach(id: "groq-whisper-large-v3", title: "Groq / whisper-large-v3", providerID: "groq_whisper", model: "whisper-large-v3"),
-            RetryTranscriptionApproach(id: "groq-whisper-large-v3-turbo", title: "Groq / whisper-large-v3-turbo", providerID: "groq_whisper", model: "whisper-large-v3-turbo"),
-            RetryTranscriptionApproach(id: "openrouter-gemini-2.5-flash", title: "OpenRouter / google/gemini-2.5-flash", providerID: "openrouter_transcribe", model: "google/gemini-2.5-flash"),
-            RetryTranscriptionApproach(id: "openrouter-openai-gpt-4o-mini", title: "OpenRouter / openai/gpt-4o-mini", providerID: "openrouter_transcribe", model: "openai/gpt-4o-mini"),
-            RetryTranscriptionApproach(id: "gemini-3-flash-preview", title: "Gemini / gemini-3-flash-preview", providerID: "gemini_transcribe", model: "gemini-3-flash-preview"),
-            RetryTranscriptionApproach(id: "gemini-2.5-flash", title: "Gemini / gemini-2.5-flash", providerID: "gemini_transcribe", model: "gemini-2.5-flash")
-        ]
+    private var retryApproaches: [RetryModelOption] {
+        var options: [RetryModelOption] = localTranscriptionOptions()
+        options.append(contentsOf: verifiedOptions(
+            providerID: "openai_whisper",
+            providerName: "OpenAI",
+            models: shell.availableModels(for: "openai_whisper", usage: .transcription, fallback: openAITranscriptionFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "groq_whisper",
+            providerName: "Groq",
+            models: shell.availableModels(for: "groq_whisper", usage: .transcription, fallback: groqTranscriptionFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "openrouter_transcribe",
+            providerName: "OpenRouter",
+            models: shell.availableModels(for: "openrouter_transcribe", usage: .transcription, fallback: openRouterTranscriptionFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "gemini_transcribe",
+            providerName: "Gemini",
+            models: shell.availableModels(for: "gemini_transcribe", usage: .transcription, fallback: geminiTranscriptionFallbackModels)
+        ))
+        return options.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
     }
 
-    private var selectedRetryApproach: RetryTranscriptionApproach {
-        retryApproaches.first(where: { $0.id == selectedRetryApproachID }) ?? retryApproaches[0]
+    private var displayedRetryApproaches: [RetryModelOption] {
+        optionsFilteredByText(
+            retryApproaches,
+            filter: retryTranscriptionFilter,
+            includeID: selectedRetryApproachID
+        )
+    }
+
+    private var selectedRetryApproach: RetryModelOption {
+        retryApproaches.first(where: { $0.id == selectedRetryApproachID })
+            ?? displayedRetryApproaches.first
+            ?? RetryModelOption(id: "fallback-transcription", title: "Unavailable", providerID: shell.settings.transcriptionProviderID, model: shell.settings.transcriptionModel)
     }
 
     private var rawSourceSummary: String {
@@ -529,33 +608,73 @@ struct PopoverView: View {
         )
     }
 
-    private var retryPolishModels: [String] {
-        if !shell.settings.polishEnabled {
-            return [shell.settings.polishModel]
+    private var retryPolishOptions: [RetryModelOption] {
+        guard shell.settings.polishEnabled else {
+            return [RetryModelOption(
+                id: "\(shell.settings.polishProviderID)|\(shell.settings.polishModel)",
+                title: "\(providerDisplayName(for: shell.settings.polishProviderID)) / \(shell.settings.polishModel)",
+                providerID: shell.settings.polishProviderID,
+                model: shell.settings.polishModel
+            )]
         }
-        switch shell.settings.polishProviderID {
-        case "openai_polish":
-            return ["gpt-5-nano", "gpt-5-mini"]
-        case "groq_polish":
-            return ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
-        case "openrouter_polish":
-            return ["openai/gpt-5-mini", "google/gemini-2.5-flash"]
-        case "gemini_polish":
-            return ["gemini-2.5-flash"]
-        default:
-            return [shell.settings.polishModel]
+
+        var options: [RetryModelOption] = []
+        options.append(contentsOf: verifiedOptions(
+            providerID: "openai_polish",
+            providerName: "OpenAI",
+            models: shell.availableModels(for: "openai_polish", usage: .polish, fallback: openAIPolishFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "groq_polish",
+            providerName: "Groq",
+            models: shell.availableModels(for: "groq_polish", usage: .polish, fallback: groqPolishFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "openrouter_polish",
+            providerName: "OpenRouter",
+            models: shell.availableModels(for: "openrouter_polish", usage: .polish, fallback: openRouterPolishFallbackModels)
+        ))
+        options.append(contentsOf: verifiedOptions(
+            providerID: "gemini_polish",
+            providerName: "Gemini",
+            models: shell.availableModels(for: "gemini_polish", usage: .polish, fallback: geminiPolishFallbackModels)
+        ))
+
+        if options.isEmpty {
+            options = [RetryModelOption(
+                id: "\(shell.settings.polishProviderID)|\(shell.settings.polishModel)",
+                title: "\(providerDisplayName(for: shell.settings.polishProviderID)) / \(shell.settings.polishModel)",
+                providerID: shell.settings.polishProviderID,
+                model: shell.settings.polishModel
+            )]
         }
+        return options.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
+    }
+
+    private var displayedRetryPolishOptions: [RetryModelOption] {
+        optionsFilteredByText(
+            retryPolishOptions,
+            filter: retryPolishFilter,
+            includeID: selectedRetryPolishOptionID
+        )
+    }
+
+    private var selectedRetryPolishOption: RetryModelOption {
+        retryPolishOptions.first(where: { $0.id == selectedRetryPolishOptionID })
+            ?? displayedRetryPolishOptions.first
+            ?? RetryModelOption(id: "fallback-polish", title: "Unavailable", providerID: shell.settings.polishProviderID, model: shell.settings.polishModel)
     }
 
     private func syncRetryPolishSelection() {
-        if retryPolishModels.contains(selectedRetryPolishModel) {
+        if retryPolishOptions.contains(where: { $0.id == selectedRetryPolishOptionID }) {
             return
         }
-        if retryPolishModels.contains(shell.settings.polishModel) {
-            selectedRetryPolishModel = shell.settings.polishModel
+        let preferredID = "\(shell.settings.polishProviderID)|\(shell.settings.polishModel)"
+        if retryPolishOptions.contains(where: { $0.id == preferredID }) {
+            selectedRetryPolishOptionID = preferredID
             return
         }
-        selectedRetryPolishModel = retryPolishModels.first ?? shell.settings.polishModel
+        selectedRetryPolishOptionID = retryPolishOptions.first?.id ?? preferredID
     }
 
     private func syncRetryTranscriptionSelection() {
@@ -585,6 +704,65 @@ struct PopoverView: View {
             return nil
         }
         return retryApproaches.first(where: { $0.providerID == providerID && $0.model == model })?.id
+    }
+
+    private func optionsFilteredByText(
+        _ options: [RetryModelOption],
+        filter: String,
+        includeID: String
+    ) -> [RetryModelOption] {
+        let trimmed = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        var filtered: [RetryModelOption]
+        if trimmed.isEmpty {
+            filtered = options
+        } else {
+            filtered = options.filter { $0.title.lowercased().contains(trimmed) }
+        }
+
+        if filtered.contains(where: { $0.id == includeID }) {
+            return filtered
+        }
+
+        if let current = options.first(where: { $0.id == includeID }) {
+            return [current] + filtered
+        }
+        return filtered
+    }
+
+    private func verifiedOptions(
+        providerID: String,
+        providerName: String,
+        models: [String]
+    ) -> [RetryModelOption] {
+        let status = shell.providerConnectivityStatus(for: providerID)
+        guard status.state == .verified else {
+            return []
+        }
+        return models.map { model in
+            RetryModelOption(
+                id: "\(providerID)|\(model)",
+                title: "\(providerName) / \(model)",
+                providerID: providerID,
+                model: model
+            )
+        }
+    }
+
+    private func localTranscriptionOptions() -> [RetryModelOption] {
+        let installedModels = shell.modelManager.catalog
+            .map(\.id)
+            .filter { shell.modelManager.isInstalled(modelID: $0) }
+            .sorted()
+
+        let models = installedModels.isEmpty ? [shell.settings.transcriptionModel] : installedModels
+        return models.map { model in
+            RetryModelOption(
+                id: "whispercpp|\(model)",
+                title: "Local whisper.cpp / \(model)",
+                providerID: "whispercpp",
+                model: model
+            )
+        }
     }
 
     private func providerDisplayName(for providerID: String) -> String {
@@ -659,16 +837,13 @@ struct PopoverView: View {
         expandedTextPanels ? 620 : 540
     }
 
-    private var popoverHeight: CGFloat {
-        expandedTextPanels ? 980 : 760
-    }
 }
 
-private struct RetryTranscriptionApproach: Identifiable {
+private struct RetryModelOption: Identifiable {
     let id: String
     let title: String
-    let providerID: String?
-    let model: String?
+    let providerID: String
+    let model: String
 }
 
 enum AVAudioSessionBridge {

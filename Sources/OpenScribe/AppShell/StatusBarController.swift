@@ -355,7 +355,7 @@ final class StatusBarController: NSObject {
     private func configurePopover() {
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 540, height: 760)
+        popover.contentSize = NSSize(width: 540, height: 700)
         popover.contentViewController = NSHostingController(rootView: PopoverView().environmentObject(shell))
     }
 
@@ -365,13 +365,32 @@ final class StatusBarController: NSObject {
         } else {
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            fitPopoverToContent(minSize: popover.contentSize)
         }
     }
 
     private func updatePopoverSize(_ size: CGSize) {
-        popover.contentSize = NSSize(width: size.width, height: size.height)
+        let minSize = NSSize(width: size.width, height: size.height)
+        popover.contentSize = minSize
+        fitPopoverToContent(minSize: minSize)
+    }
+
+    private func fitPopoverToContent(minSize: NSSize) {
+        guard let contentView = popover.contentViewController?.view else {
+            return
+        }
+
+        contentView.frame.size.width = minSize.width
+        contentView.layoutSubtreeIfNeeded()
+        let fitting = contentView.fittingSize
+        let target = NSSize(
+            width: minSize.width,
+            height: max(minSize.height, fitting.height)
+        )
+
+        popover.contentSize = target
         if popover.isShown {
-            popover.contentViewController?.view.window?.setContentSize(NSSize(width: size.width, height: size.height))
+            popover.contentViewController?.view.window?.setContentSize(target)
         }
     }
 
