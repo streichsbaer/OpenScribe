@@ -84,6 +84,8 @@ When guidance conflicts, I apply this order:
 - Pipeline clarity: polish progress state is visible while polishing is active.
 - Error clarity: any provider failure message must include a clear next user action.
 - Change safety: behavior changes require tests when the behavior is testable.
+- Verification rigor: validate outputs and artifacts against intent, not only command success.
+- Test integrity: when test artifacts (screenshots/logs/reports) do not match expected content, treat the run as failed and iterate until corrected.
 
 ## Scratchpad Contract
 

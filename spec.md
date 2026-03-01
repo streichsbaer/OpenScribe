@@ -58,14 +58,16 @@ Root: `~/Library/Application Support/OpenScribe`
 - Speaker diarization and timestamps.
 
 ## Improvement Backlog
-- Add official GitHub and X brand icons in About once we finalize bundled asset choice.
-- Add a dedicated OpenScribe repository link in About.
 - Explore always-on wake phrase mode:
   - keep listening while active
   - start transcript on action phrase
   - auto-stop after silence cooldown
   - voice commands for `pause recording`, `resume recording`, `stop recording`
 - Evaluate always-on mic coexistence behavior with other apps on macOS and define user-facing constraints.
+- Test roadmap:
+  - Add screenshot-regression coverage for menubar icon state transitions across appearance modes:
+    - idle, recording-working, recording-paused, recording-no-audio, transcribing, polishing
+    - system, light, dark appearance modes
 
 ## Manual QA Focus
 1. Start recording and speak for 2 to 3 seconds:

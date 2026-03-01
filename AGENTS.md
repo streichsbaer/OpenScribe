@@ -18,6 +18,12 @@
 - Treat `SOUL.md` as the product and engineering voice for this repository.
 - Use `SOUL.md` to guide priorities, privacy stance, and communication tone.
 
+## Local Skills
+
+- Repo-local skills live under `.agents/<skill>/SKILL.md`.
+- When a task matches a local skill, load that skill before implementing.
+- Prefer scripts in `.agents/<skill>/scripts/` for repeatable automation.
+
 ## Git Commit Policy
 
 - Commit in small logical slices.
