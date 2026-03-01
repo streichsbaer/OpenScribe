@@ -304,6 +304,24 @@ struct SettingsView: View {
                         .foregroundColor(.orange)
                 }
             }
+
+            settingsCard("MICROPHONE") {
+                Text(microphonePermissionSummary)
+                    .font(.caption)
+                    .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
+
+                HStack(spacing: 8) {
+                    Button("Open Microphone Settings") {
+                        shell.openMicrophonePrivacySettings()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Refresh") {
+                        shell.refreshPermissionState()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
         }
     }
 
@@ -645,24 +663,6 @@ struct SettingsView: View {
 
                     Button("Open Accessibility Settings") {
                         shell.openAccessibilityPrivacySettings()
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Refresh") {
-                        shell.refreshPermissionState()
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-
-            settingsCard("MICROPHONE") {
-                Text(microphonePermissionSummary)
-                    .font(.caption)
-                    .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
-
-                HStack(spacing: 8) {
-                    Button("Open Microphone Settings") {
-                        shell.openMicrophonePrivacySettings()
                     }
                     .buttonStyle(.bordered)
 
