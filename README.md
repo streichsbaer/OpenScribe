@@ -14,9 +14,13 @@ Native macOS menubar dictation app scaffold for Apple Silicon.
   - Local `whisper.cpp`
   - OpenAI Whisper
   - Groq Whisper
+  - OpenRouter (OpenAI-compatible audio chat transcription)
+  - Gemini (OpenAI-compatible audio chat transcription)
 - LLM polish provider abstraction with implementations for:
   - OpenAI chat completions
   - Groq chat completions
+  - OpenRouter chat completions
+  - Gemini chat completions
 - Rules file editor + open in external editor.
 - Transcript view shows Raw (editable) and Polished text in a single stacked layout (no tab switcher).
 - Local model manager (install/remove) for `whisper.cpp` models.
@@ -32,6 +36,16 @@ swift build
 ```bash
 swift run OpenScribe
 ```
+
+## Live Provider Smoke (TTS Generated Audio)
+
+Generate a local TTS WAV and run live transcription + polish smoke tests for selected/OpenRouter/Gemini providers:
+
+```bash
+zsh Scripts/run_live_provider_smoke.sh
+```
+
+Artifacts and per-case logs are written under `artifacts/live-provider-smoke/<timestamp>/`.
 
 ## Release
 
@@ -64,7 +78,11 @@ MIT. See [LICENSE](LICENSE).
 - API keys are stored in Keychain entries:
   - `openai_api_key`
   - `groq_api_key`
+  - `openrouter_api_key`
+  - `gemini_api_key`
 - Environment variable fallback is supported:
   - `OPENAI_API_KEY`
   - `GROQ_API_KEY`
+  - `SCRIBE_OPENROUTER_API_KEY` or `OPENROUTER_API_KEY`
+  - `GEMINI_API_KEY`
   - Keychain values take precedence over environment values.

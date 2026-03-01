@@ -25,6 +25,16 @@ final class ProviderFactory {
                 throw ProviderError.missingAPIKey("Groq")
             }
             return GroqWhisperProvider(apiKey: key)
+        case "openrouter_transcribe":
+            guard let key = apiKeyResolver.resolve(.openRouter).value else {
+                throw ProviderError.missingAPIKey("OpenRouter")
+            }
+            return OpenRouterTranscriptionProvider(apiKey: key)
+        case "gemini_transcribe":
+            guard let key = apiKeyResolver.resolve(.gemini).value else {
+                throw ProviderError.missingAPIKey("Gemini")
+            }
+            return GeminiTranscriptionProvider(apiKey: key)
         default:
             throw ProviderError.unsupported("Unknown transcription provider: \(id)")
         }
@@ -42,6 +52,16 @@ final class ProviderFactory {
                 throw ProviderError.missingAPIKey("Groq")
             }
             return GroqPolishProvider(apiKey: key)
+        case "openrouter_polish":
+            guard let key = apiKeyResolver.resolve(.openRouter).value else {
+                throw ProviderError.missingAPIKey("OpenRouter")
+            }
+            return OpenRouterPolishProvider(apiKey: key)
+        case "gemini_polish":
+            guard let key = apiKeyResolver.resolve(.gemini).value else {
+                throw ProviderError.missingAPIKey("Gemini")
+            }
+            return GeminiPolishProvider(apiKey: key)
         default:
             throw ProviderError.unsupported("Unknown polish provider: \(id)")
         }

@@ -11,6 +11,7 @@ struct APIKeyResolution {
     let source: APIKeySource
     let keychainPresent: Bool
     let environmentPresent: Bool
+    let environmentVariableNameUsed: String?
 }
 
 struct APIKeyResolver {
@@ -27,14 +28,18 @@ struct APIKeyResolver {
 
     func resolve(_ entry: KeychainEntry) -> APIKeyResolution {
         let keychainValue = normalized(keychain.load(entry))
-        let environmentValue = normalized(environment[entry.environmentVariableName])
+        let environmentVariableName = entry.environmentVariableNames.first(where: {
+            normalized(environment[$0]) != nil
+        })
+        let environmentValue = environmentVariableName.flatMap { normalized(environment[$0]) }
 
         if let keychainValue {
             return APIKeyResolution(
                 value: keychainValue,
                 source: .keychain,
                 keychainPresent: true,
-                environmentPresent: environmentValue != nil
+                environmentPresent: environmentValue != nil,
+                environmentVariableNameUsed: environmentVariableName
             )
         }
 
@@ -43,7 +48,8 @@ struct APIKeyResolver {
                 value: environmentValue,
                 source: .environment,
                 keychainPresent: false,
-                environmentPresent: true
+                environmentPresent: true,
+                environmentVariableNameUsed: environmentVariableName
             )
         }
 
@@ -51,7 +57,8 @@ struct APIKeyResolver {
             value: nil,
             source: .missing,
             keychainPresent: false,
-            environmentPresent: false
+            environmentPresent: false,
+            environmentVariableNameUsed: nil
         )
     }
 

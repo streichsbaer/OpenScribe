@@ -23,6 +23,8 @@ final class AppShell: ObservableObject {
 
     @Published var openAIKeyInput: String = ""
     @Published var groqKeyInput: String = ""
+    @Published var openRouterKeyInput: String = ""
+    @Published var geminiKeyInput: String = ""
     @Published var latestPolishedTranscript: String = ""
     @Published var menubarIconDebug: String = "icon=idle"
     @Published var transcribeElapsedSeconds: Int = 0
@@ -84,6 +86,8 @@ final class AppShell: ObservableObject {
 
         self.openAIKeyInput = keychainStore.load(.openAI) ?? ""
         self.groqKeyInput = keychainStore.load(.groq) ?? ""
+        self.openRouterKeyInput = keychainStore.load(.openRouter) ?? ""
+        self.geminiKeyInput = keychainStore.load(.gemini) ?? ""
 
         audioCapture.onLevelUpdate = { [weak self] level in
             Task { @MainActor [weak self] in
@@ -125,6 +129,14 @@ final class AppShell: ObservableObject {
         apiKeyStatusDescription(for: .groq)
     }
 
+    var openRouterKeyStatusDescription: String {
+        apiKeyStatusDescription(for: .openRouter)
+    }
+
+    var geminiKeyStatusDescription: String {
+        apiKeyStatusDescription(for: .gemini)
+    }
+
     var accessibilityPermissionGranted: Bool {
         AccessibilityInputInjector.isTrusted(promptIfNeeded: false)
     }
@@ -150,6 +162,20 @@ final class AppShell: ObservableObject {
             try? keychainStore.save(groq, for: .groq)
         }
 
+        let openRouter = openRouterKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if openRouter.isEmpty {
+            keychainStore.delete(.openRouter)
+        } else {
+            try? keychainStore.save(openRouter, for: .openRouter)
+        }
+
+        let gemini = geminiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if gemini.isEmpty {
+            keychainStore.delete(.gemini)
+        } else {
+            try? keychainStore.save(gemini, for: .gemini)
+        }
+
         statusMessage = "API keys saved"
     }
 
@@ -159,6 +185,10 @@ final class AppShell: ObservableObject {
             openAIKeyInput = ""
         case .groq:
             groqKeyInput = ""
+        case .openRouter:
+            openRouterKeyInput = ""
+        case .gemini:
+            geminiKeyInput = ""
         }
         saveAPIKeys()
     }
@@ -166,6 +196,8 @@ final class AppShell: ObservableObject {
     func clearAllAPIKeys() {
         openAIKeyInput = ""
         groqKeyInput = ""
+        openRouterKeyInput = ""
+        geminiKeyInput = ""
         saveAPIKeys()
         statusMessage = "API keys cleared"
     }
@@ -656,17 +688,22 @@ final class AppShell: ObservableObject {
 
     private func apiKeyStatusDescription(for entry: KeychainEntry) -> String {
         let resolution = apiKeyResolver.resolve(entry)
+        let environmentSummary = entry.environmentVariableNames.joined(separator: " or ")
 
         switch resolution.source {
         case .keychain:
             if resolution.environmentPresent {
-                return "\(entry.providerDisplayName): using saved Keychain key (overrides \(entry.environmentVariableName))."
+                if let matched = resolution.environmentVariableNameUsed {
+                    return "\(entry.providerDisplayName): using saved Keychain key (overrides \(matched))."
+                }
+                return "\(entry.providerDisplayName): using saved Keychain key (overrides environment key)."
             }
             return "\(entry.providerDisplayName): using saved Keychain key."
         case .environment:
-            return "\(entry.providerDisplayName): using \(entry.environmentVariableName) from environment. Save a key above to override."
+            let matched = resolution.environmentVariableNameUsed ?? environmentSummary
+            return "\(entry.providerDisplayName): using \(matched) from environment. Save a key above to override."
         case .missing:
-            return "\(entry.providerDisplayName): no API key in Keychain or \(entry.environmentVariableName)."
+            return "\(entry.providerDisplayName): no API key in Keychain or \(environmentSummary)."
         }
     }
 

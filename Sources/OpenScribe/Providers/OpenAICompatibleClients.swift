@@ -5,9 +5,66 @@ struct OpenAITranscriptionResponse: Codable {
 }
 
 struct OpenAIChatRequest: Codable {
+    struct InputAudio: Codable {
+        let format: String
+        let data: String
+    }
+
+    struct ContentPart: Codable {
+        let type: String
+        let text: String?
+        let inputAudio: InputAudio?
+
+        init(type: String, text: String? = nil, inputAudio: InputAudio? = nil) {
+            self.type = type
+            self.text = text
+            self.inputAudio = inputAudio
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case type
+            case text
+            case inputAudio = "input_audio"
+        }
+    }
+
     struct Message: Codable {
         let role: String
-        let content: String
+        let content: Content
+
+        init(role: String, content: String) {
+            self.role = role
+            self.content = .text(content)
+        }
+
+        init(role: String, parts: [ContentPart]) {
+            self.role = role
+            self.content = .parts(parts)
+        }
+    }
+
+    enum Content: Codable {
+        case text(String)
+        case parts([ContentPart])
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let text = try? container.decode(String.self) {
+                self = .text(text)
+                return
+            }
+            self = .parts(try container.decode([ContentPart].self))
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .text(let text):
+                try container.encode(text)
+            case .parts(let parts):
+                try container.encode(parts)
+            }
+        }
     }
 
     let model: String
@@ -16,10 +73,50 @@ struct OpenAIChatRequest: Codable {
 }
 
 struct OpenAIChatResponse: Codable {
+    struct ContentPart: Codable {
+        let type: String?
+        let text: String?
+    }
+
     struct Choice: Codable {
         struct Message: Codable {
             let role: String
-            let content: String
+            let content: Content
+
+            enum Content: Codable {
+                case text(String)
+                case parts([ContentPart])
+
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.singleValueContainer()
+                    if let text = try? container.decode(String.self) {
+                        self = .text(text)
+                        return
+                    }
+                    self = .parts(try container.decode([ContentPart].self))
+                }
+
+                func encode(to encoder: Encoder) throws {
+                    var container = encoder.singleValueContainer()
+                    switch self {
+                    case .text(let text):
+                        try container.encode(text)
+                    case .parts(let parts):
+                        try container.encode(parts)
+                    }
+                }
+            }
+
+            var textualContent: String {
+                switch content {
+                case .text(let text):
+                    return text
+                case .parts(let parts):
+                    return parts
+                        .compactMap(\.text)
+                        .joined(separator: "\n")
+                }
+            }
         }
 
         let index: Int
@@ -147,9 +244,69 @@ func performChatRequest(
     }
 
     let payload = try JSONDecoder().decode(OpenAIChatResponse.self, from: data)
-    guard let content = payload.choices.first?.message.content else {
+    guard let content = payload.choices.first?.message.textualContent else {
         throw ProviderError.invalidResponse
     }
 
     return content.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+func performAudioTranscriptionViaChatRequest(
+    endpoint: URL,
+    apiKey: String,
+    model: String,
+    audioFileURL: URL,
+    language: String?
+) async throws -> String {
+    let audioData = try Data(contentsOf: audioFileURL)
+    let audioBase64 = audioData.base64EncodedString()
+
+    var instructions = "Transcribe the provided audio exactly. Return plain text only."
+    if let language, !language.isEmpty, language.lowercased() != "auto" {
+        instructions += " The target language is \(language)."
+    }
+
+    let requestBody = OpenAIChatRequest(
+        model: model,
+        messages: [
+            .init(role: "system", content: "You are a transcription engine. Return transcript text only."),
+            .init(
+                role: "user",
+                parts: [
+                    .init(type: "text", text: instructions),
+                    .init(
+                        type: "input_audio",
+                        inputAudio: .init(format: "wav", data: audioBase64)
+                    )
+                ]
+            )
+        ],
+        temperature: nil
+    )
+
+    var request = URLRequest(url: endpoint)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONEncoder().encode(requestBody)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let http = response as? HTTPURLResponse else {
+        throw ProviderError.invalidResponse
+    }
+
+    guard (200..<300).contains(http.statusCode) else {
+        let details = String(data: data, encoding: .utf8) ?? ""
+        throw OpenAICompatibleError.http(http.statusCode, details)
+    }
+
+    let payload = try JSONDecoder().decode(OpenAIChatResponse.self, from: data)
+    guard let content = payload.choices.first?.message.textualContent
+        .trimmingCharacters(in: .whitespacesAndNewlines),
+          !content.isEmpty else {
+        throw ProviderError.invalidResponse
+    }
+
+    return content
 }

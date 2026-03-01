@@ -497,7 +497,11 @@ struct PopoverView: View {
             RetryTranscriptionApproach(id: "openai-gpt-4o-transcribe", title: "OpenAI / gpt-4o-transcribe", providerID: "openai_whisper", model: "gpt-4o-transcribe"),
             RetryTranscriptionApproach(id: "openai-whisper-1", title: "OpenAI / whisper-1", providerID: "openai_whisper", model: "whisper-1"),
             RetryTranscriptionApproach(id: "groq-whisper-large-v3", title: "Groq / whisper-large-v3", providerID: "groq_whisper", model: "whisper-large-v3"),
-            RetryTranscriptionApproach(id: "groq-whisper-large-v3-turbo", title: "Groq / whisper-large-v3-turbo", providerID: "groq_whisper", model: "whisper-large-v3-turbo")
+            RetryTranscriptionApproach(id: "groq-whisper-large-v3-turbo", title: "Groq / whisper-large-v3-turbo", providerID: "groq_whisper", model: "whisper-large-v3-turbo"),
+            RetryTranscriptionApproach(id: "openrouter-gemini-2.5-flash", title: "OpenRouter / google/gemini-2.5-flash", providerID: "openrouter_transcribe", model: "google/gemini-2.5-flash"),
+            RetryTranscriptionApproach(id: "openrouter-openai-gpt-4o-mini", title: "OpenRouter / openai/gpt-4o-mini", providerID: "openrouter_transcribe", model: "openai/gpt-4o-mini"),
+            RetryTranscriptionApproach(id: "gemini-3-flash-preview", title: "Gemini / gemini-3-flash-preview", providerID: "gemini_transcribe", model: "gemini-3-flash-preview"),
+            RetryTranscriptionApproach(id: "gemini-2.5-flash", title: "Gemini / gemini-2.5-flash", providerID: "gemini_transcribe", model: "gemini-2.5-flash")
         ]
     }
 
@@ -534,6 +538,10 @@ struct PopoverView: View {
             return ["gpt-5-mini"]
         case "groq_polish":
             return ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+        case "openrouter_polish":
+            return ["openai/gpt-5-mini", "google/gemini-2.5-flash"]
+        case "gemini_polish":
+            return ["gemini-2.5-flash"]
         default:
             return [shell.settings.polishModel]
         }
@@ -587,10 +595,18 @@ struct PopoverView: View {
             return "OpenAI"
         case "groq_whisper":
             return "Groq"
+        case "openrouter_transcribe":
+            return "OpenRouter"
+        case "gemini_transcribe":
+            return "Gemini"
         case "openai_polish":
             return "OpenAI"
         case "groq_polish":
             return "Groq"
+        case "openrouter_polish":
+            return "OpenRouter"
+        case "gemini_polish":
+            return "Gemini"
         default:
             return providerID
         }

@@ -78,12 +78,16 @@ struct SettingsView: View {
     private let sttProviders = [
         (id: "whispercpp", label: "Local whisper.cpp"),
         (id: "openai_whisper", label: "OpenAI Speech-to-Text"),
-        (id: "groq_whisper", label: "Groq Whisper")
+        (id: "groq_whisper", label: "Groq Whisper"),
+        (id: "openrouter_transcribe", label: "OpenRouter Transcription"),
+        (id: "gemini_transcribe", label: "Gemini Transcription")
     ]
 
     private let polishProviders = [
         (id: "openai_polish", label: "OpenAI"),
-        (id: "groq_polish", label: "Groq")
+        (id: "groq_polish", label: "Groq"),
+        (id: "openrouter_polish", label: "OpenRouter"),
+        (id: "gemini_polish", label: "Gemini")
     ]
     private let authorGitHubURL = URL(string: "https://github.com/streichsbaer")!
     private let authorXURL = URL(string: "https://x.com/s_streichsbier")!
@@ -433,8 +437,8 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
 
                     Text("Groq API Key")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     HStack(spacing: 8) {
                         SecureField("Groq API key", text: $shell.groqKeyInput)
                         Button {
@@ -446,6 +450,40 @@ struct SettingsView: View {
                         .help("Clear Groq key")
                     }
                     Text(shell.groqKeyStatusDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("OpenRouter API Key")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        SecureField("OpenRouter API key", text: $shell.openRouterKeyInput)
+                        Button {
+                            shell.clearAPIKey(.openRouter)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Clear OpenRouter key")
+                    }
+                    Text(shell.openRouterKeyStatusDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("Gemini API Key")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        SecureField("Gemini API key", text: $shell.geminiKeyInput)
+                        Button {
+                            shell.clearAPIKey(.gemini)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Clear Gemini key")
+                    }
+                    Text(shell.geminiKeyStatusDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -792,6 +830,10 @@ struct SettingsView: View {
             return ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"]
         case "groq_whisper":
             return ["whisper-large-v3", "whisper-large-v3-turbo"]
+        case "openrouter_transcribe":
+            return ["google/gemini-2.5-flash", "openai/gpt-4o-mini"]
+        case "gemini_transcribe":
+            return ["gemini-3-flash-preview", "gemini-2.5-flash"]
         default:
             return ["base"]
         }
@@ -803,6 +845,10 @@ struct SettingsView: View {
             return ["gpt-5-mini"]
         case "groq_polish":
             return ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+        case "openrouter_polish":
+            return ["openai/gpt-5-mini", "google/gemini-2.5-flash"]
+        case "gemini_polish":
+            return ["gemini-2.5-flash"]
         default:
             return ["gpt-5-mini"]
         }
