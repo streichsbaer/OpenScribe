@@ -61,6 +61,7 @@ Root: `~/Library/Application Support/OpenScribe`
 - Re-Polish supports per-session provider/model override with inline search + picker.
 - Recording, transcribing, and polishing elapsed time is shown in the header state chip.
 - Loading text remains inside transcript text panels to keep popover height stable.
+- Popover and tab behavior contract is defined in `docs/popover-spec.md`.
 
 ## Out of Scope (V1)
 - Streaming transcription.

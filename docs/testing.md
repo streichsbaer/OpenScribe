@@ -22,6 +22,13 @@ zsh .agents/skills/ui-smoke/scripts/run.sh --out artifacts/ui-smoke/latest
 - `settings-window.png`
 - `settings-<tab>.png` for all tabs
 - `menubar-icon-<mode>-<state>.png` for all icon-state snapshots
+- Popover parity artifacts from `docs/popover-spec.md`:
+  - `openscribe-window-click-history.png`
+  - `openscribe-window-click-history-full.png`
+  - `openscribe-window-hotkey-history.png`
+  - `openscribe-window-hotkey-history-full.png`
+  - `openscribe-window-hotkey-live.png`
+  - `openscribe-window-live-expanded-content.png`
 
 The smoke script exits non-zero if required artifacts are missing.
 
