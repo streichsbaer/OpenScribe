@@ -6,7 +6,8 @@ Native macOS menubar dictation app scaffold for Apple Silicon.
 
 - Menubar-only app shell with popover UI.
 - Global hotkey toggle (default `Fn + Space`).
-- Copy-latest hotkey (default `Ctrl + Option + C`, configurable).
+- Copy-latest hotkey (default `Ctrl + Option + P`, configurable).
+- Copy-raw hotkey (default `Ctrl + Option + R`, configurable).
 - Paste-latest hotkey (default `Ctrl + Option + V`, configurable) pastes into the frontmost app when Accessibility permission is granted.
 - Crash-safe audio capture to `audio.capture.wav.part` with atomic finalize to `audio.m4a`.
 - Session artifacts persisted under `~/Library/Application Support/OpenScribe`.
@@ -22,7 +23,7 @@ Native macOS menubar dictation app scaffold for Apple Silicon.
   - OpenRouter chat completions
   - Gemini chat completions
 - Rules file editor + open in external editor.
-- Transcript view shows Raw (editable) and Polished text in a single stacked layout (no tab switcher).
+- Transcript view shows Raw (read-only) and Polished text in a single stacked layout (no tab switcher).
 - Local model manager (install/remove) for `whisper.cpp` models.
 
 ## Build

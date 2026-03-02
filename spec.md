@@ -9,17 +9,23 @@
 2. Audio is captured to `audio.capture.wav.part`.
 3. On stop, audio is finalized atomically to `audio.m4a`.
 4. STT runs via selected provider.
-5. Polish runs via selected LLM provider with `Rules/rules.md`.
-6. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
+5. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
+6. If polish is disabled, polished output is passthrough from raw transcript.
+7. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
 
 ## Defaults
 - Start/stop hotkey default: `Fn + Space` (configurable).
-- Copy hotkey default: `Ctrl + Option + C` (configurable).
+- Copy polished hotkey default: `Ctrl + Option + P` (configurable).
+- Copy raw hotkey default: `Ctrl + Option + R` (configurable).
 - Paste hotkey default: `Ctrl + Option + V` (configurable).
+- Toggle popover hotkey default: `Ctrl + Option + O` (configurable).
+- Open settings hotkey default: `Ctrl + Option + ,` (configurable).
 - Paste hotkey behavior: copy latest polished transcript then paste via synthetic `Cmd + V` only when Accessibility permission is granted.
 - If hotkey registration fails, app shows blocking warning and requires manual change.
 - Default STT provider: local `whisper.cpp`.
 - Default local model: `base`.
+- Default polish: disabled.
+- Default polish provider/model: `OpenAI / gpt-5-nano`.
 - Language: `auto`.
 - Copy-on-complete: enabled.
 
@@ -31,7 +37,6 @@ Root: `~/Library/Application Support/OpenScribe`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/raw.txt`
 - `Recordings/YYYY-MM-DD/HHmmss-<uuid>/polished.md`
 - `Rules/rules.md`
-- `Rules/rules.history.jsonl`
 - `Models/whisper/ggml-<model>.bin`
 - `Config/settings.json`
 
@@ -40,15 +45,20 @@ Root: `~/Library/Application Support/OpenScribe`
   - Local `whisper.cpp`
   - OpenAI Whisper API
   - Groq Whisper API
+  - OpenRouter (OpenAI-compatible API)
+  - Gemini (OpenAI-compatible API)
 - Polish:
   - OpenAI chat API
   - Groq chat API
+  - OpenRouter chat API
+  - Gemini chat API
 
 ## Transcript UI
 - Raw transcript is shown in a read-only text panel.
 - Polished transcript is shown directly below raw text.
 - No raw/polished tab switcher.
-- Re-Transcribe action reruns transcription and polish for the current session audio using current provider settings.
+- Re-Transcribe supports per-session provider/model override with inline search + picker.
+- Re-Polish supports per-session provider/model override with inline search + picker.
 - Recording, transcribing, and polishing elapsed time is shown in the header state chip.
 - Loading text remains inside transcript text panels to keep popover height stable.
 
@@ -129,19 +139,7 @@ Root: `~/Library/Application Support/OpenScribe`
   - Session can include temporary style rules without changing global `rules.md`.
   - Instructions are visible in session metadata for traceability.
 
-### R7. Optional M4A Recording Format
-- Goal: reduce on-disk recording size.
-- Notes:
-  - Yes, `m4a` is much smaller than uncompressed `wav`.
-- Scope:
-  - Add recording format setting: `WAV (PCM)` or `M4A (AAC)`.
-  - Keep `WAV` as default for maximum provider compatibility and deterministic processing.
-  - If required by provider, transcode on pipeline input path.
-- Acceptance:
-  - M4A sessions work end-to-end.
-  - Artifact contract remains explicit and stable in metadata.
-
-### R8. Wake Phrase Research Track
+### R7. Wake Phrase Research Track
 - Goal: evaluate optional always-listening mode for hands-free start/stop.
 - Scope:
   - Start transcript on action phrase.
@@ -151,11 +149,12 @@ Root: `~/Library/Application Support/OpenScribe`
 - Acceptance:
   - Clear feasibility decision with UX and technical constraints documented.
 
-### R9. Test Roadmap
+### R8. Test Roadmap
 - Scope:
-  - Add screenshot-regression coverage for menubar icon state transitions across appearance modes:
+  - Add baseline comparison to existing menubar icon snapshots:
     - idle, recording-working, recording-paused, recording-no-audio, transcribing, polishing
     - system, light, dark appearance modes
+  - Add thresholded image-diff reporting and CI-friendly failure output.
 
 ## Manual QA Focus
 1. Start recording and speak for 2 to 3 seconds:
