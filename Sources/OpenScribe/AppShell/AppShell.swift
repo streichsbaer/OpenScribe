@@ -141,7 +141,6 @@ final class AppShell: ObservableObject {
     var openSettingsWindowHandler: (() -> Void)?
     var togglePopoverHandler: (() -> Void)?
     var showPopoverHandler: (() -> Void)?
-    var isPopoverShownHandler: (() -> Bool)?
     var updatePopoverSizeHandler: ((CGSize, Bool) -> Void)?
 
     let layout: DirectoryLayout
@@ -394,6 +393,17 @@ final class AppShell: ObservableObject {
             allowContentExpansion = false
         }
         updatePopoverSizeHandler?(size, allowContentExpansion)
+    }
+
+    func selectPopoverTab(_ tab: PopoverTabSelection, revealPopover: Bool = false) {
+        selectedPopoverTab = tab
+        if tab == .history {
+            refreshHistorySessions(preserveLoadedCount: true)
+        }
+        updatePopoverSize(selectedTab: tab, expandedTextPanels: isTranscriptPanelsExpanded)
+        if revealPopover {
+            showPopoverWindow()
+        }
     }
 
     func updateRawTranscriptFromEditor(_ text: String) {
@@ -891,20 +901,11 @@ final class AppShell: ObservableObject {
     }
 
     func showLiveTabFromHotkey() {
-        selectedPopoverTab = .live
-        if !isPopoverShown {
-            updatePopoverSize(selectedTab: .live, expandedTextPanels: isTranscriptPanelsExpanded)
-        }
-        showPopoverWindow()
+        selectPopoverTab(.live, revealPopover: true)
     }
 
     func showHistoryTabFromHotkey() {
-        selectedPopoverTab = .history
-        refreshHistorySessions(preserveLoadedCount: true)
-        if !isPopoverShown {
-            updatePopoverSize(selectedTab: .history, expandedTextPanels: isTranscriptPanelsExpanded)
-        }
-        showPopoverWindow()
+        selectPopoverTab(.history, revealPopover: true)
     }
 
     func loadMoreHistorySessions(mode: HistoryLoadMoreMode) {
@@ -963,10 +964,6 @@ final class AppShell: ObservableObject {
 
     private var isTranscriptPanelsExpanded: Bool {
         userDefaults.bool(forKey: Self.transcriptPanelsExpandedDefaultsKey)
-    }
-
-    private var isPopoverShown: Bool {
-        isPopoverShownHandler?() ?? false
     }
 
     func availableModels(

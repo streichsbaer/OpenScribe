@@ -93,9 +93,6 @@ final class StatusBarController: NSObject {
         shell.showPopoverHandler = { [weak self] in
             self?.showPopoverFromHotkey()
         }
-        shell.isPopoverShownHandler = { [weak self] in
-            self?.popover.isShown ?? false
-        }
         shell.updatePopoverSizeHandler = { [weak self] size, allowContentExpansion in
             self?.updatePopoverSize(size, allowContentExpansion: allowContentExpansion)
         }
@@ -219,6 +216,8 @@ final class StatusBarController: NSObject {
         var historyDirectLayoutParityReason = "not-evaluated"
         var historyLayoutParityStatus = "fail"
         var historyLayoutParityReason = "not-evaluated"
+        var historyVerticalFillStatus = "fail"
+        var historyVerticalFillReason = "not-evaluated"
         var settingsStatus = "fail"
         var iconStatus = "fail"
         var debugLines: [String] = []
@@ -249,7 +248,7 @@ final class StatusBarController: NSObject {
             debugLines.append("tabClickDispatch[live-direct]=\(liveTabClickedForDirectHotkey)")
             if !liveTabClickedForDirectHotkey {
                 tabClickDispatchStatus = "fail"
-                shell.selectedPopoverTab = .live
+                shell.selectPopoverTab(.live)
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
 
@@ -279,14 +278,14 @@ final class StatusBarController: NSObject {
             debugLines.append("tabClickDispatch[live-before-click-history]=\(liveTabClickedBeforeClickHistory)")
             if !liveTabClickedBeforeClickHistory {
                 tabClickDispatchStatus = "fail"
-                shell.selectedPopoverTab = .live
+                shell.selectPopoverTab(.live)
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
             let historyTabClickedForBaseline = selectPopoverTabViaSegmentedControlForUISmoke(.history)
             debugLines.append("tabClickDispatch[history-baseline]=\(historyTabClickedForBaseline)")
             if !historyTabClickedForBaseline {
                 tabClickDispatchStatus = "fail"
-                shell.selectedPopoverTab = .history
+                shell.selectPopoverTab(.history)
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
             let historyClickView = popover.contentViewController?.view.window?.contentView
@@ -329,7 +328,7 @@ final class StatusBarController: NSObject {
             debugLines.append("tabClickDispatch[live-before-hotkey-comparison]=\(liveTabClickedBeforeHotkeyComparison)")
             if !liveTabClickedBeforeHotkeyComparison {
                 tabClickDispatchStatus = "fail"
-                shell.selectedPopoverTab = .live
+                shell.selectPopoverTab(.live)
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
 
@@ -375,11 +374,27 @@ final class StatusBarController: NSObject {
                 historyLayoutParityReason = parity.reason
                 debugLines.append("historyLayoutParity=\(historyLayoutParityStatus)")
                 debugLines.append("historyLayoutParityReason=\(historyLayoutParityReason)")
+
+                let clickFill = evaluateHistoryVerticalFill(clickHistoryMetrics)
+                let hotkeyFill = evaluateHistoryVerticalFill(hotkeyHistoryMetrics)
+                if clickFill.isMatch, hotkeyFill.isMatch {
+                    historyVerticalFillStatus = "pass"
+                    historyVerticalFillReason = "ok"
+                } else {
+                    historyVerticalFillStatus = "fail"
+                    historyVerticalFillReason = "click=\(clickFill.reason);hotkey=\(hotkeyFill.reason)"
+                }
+                debugLines.append("historyVerticalFill=\(historyVerticalFillStatus)")
+                debugLines.append("historyVerticalFillReason=\(historyVerticalFillReason)")
             } else {
                 historyLayoutParityStatus = "fail"
                 historyLayoutParityReason = "missing-metrics"
                 debugLines.append("historyLayoutParity=fail")
                 debugLines.append("historyLayoutParityReason=missing-metrics")
+                historyVerticalFillStatus = "fail"
+                historyVerticalFillReason = "missing-metrics"
+                debugLines.append("historyVerticalFill=fail")
+                debugLines.append("historyVerticalFillReason=missing-metrics")
             }
 
             let liveHotkeyDispatched = triggerTabHotkeyForUISmoke(.live)
@@ -457,6 +472,8 @@ final class StatusBarController: NSObject {
         historyLayoutParityDirectReason=\(historyDirectLayoutParityReason)
         historyLayoutParity=\(historyLayoutParityStatus)
         historyLayoutParityReason=\(historyLayoutParityReason)
+        historyVerticalFill=\(historyVerticalFillStatus)
+        historyVerticalFillReason=\(historyVerticalFillReason)
         settings=\(settingsStatus)
         settingsTabsFailed=\(tabCaptureFailures)
         menubarIcons=\(iconStatus)
@@ -709,6 +726,14 @@ final class StatusBarController: NSObject {
                 false,
                 "bottom-inset mismatch click=\(Int(clickMetrics.bottomInset)) hotkey=\(Int(hotkeyMetrics.bottomInset))"
             )
+        }
+        return (true, "ok")
+    }
+
+    private func evaluateHistoryVerticalFill(_ metrics: PopoverLayoutMetrics) -> (isMatch: Bool, reason: String) {
+        let maxAllowedSlack: CGFloat = 48
+        guard metrics.hostVerticalSlack <= maxAllowedSlack else {
+            return (false, "excess-slack=\(Int(metrics.hostVerticalSlack))")
         }
         return (true, "ok")
     }

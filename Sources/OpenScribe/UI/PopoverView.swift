@@ -27,27 +27,22 @@ struct PopoverView: View {
                 textSection
             } else {
                 historySection
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
 
             footerSection
         }
         .padding(12)
         .frame(width: popoverWidth)
-        .fixedSize(horizontal: false, vertical: true)
+        .fixedSize(horizontal: false, vertical: shell.selectedPopoverTab == .live)
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
-            syncPopoverSize()
+            shell.selectPopoverTab(shell.selectedPopoverTab)
             syncRetryPolishSelection()
             syncRetryTranscriptionSelection()
-            if shell.selectedPopoverTab == .history {
-                shell.refreshHistorySessions(preserveLoadedCount: true)
-            }
         }
         .onChange(of: expandedTextPanels) { _, newValue in
             handleExpandedTextPanelsChanged(newValue)
-        }
-        .onChange(of: shell.selectedPopoverTab) { _, newValue in
-            handleSelectedTabChanged(newValue)
         }
         .onChange(of: shell.settings.polishProviderID) { _, _ in
             syncRetryPolishSelection()
@@ -107,13 +102,22 @@ struct PopoverView: View {
     }
 
     private var mainTabPicker: some View {
-        Picker("Popover tab", selection: $shell.selectedPopoverTab) {
+        Picker("Popover tab", selection: mainTabSelection) {
             Text("Live").tag(PopoverTabSelection.live)
             Text("History").tag(PopoverTabSelection.history)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(width: 210)
+    }
+
+    private var mainTabSelection: Binding<PopoverTabSelection> {
+        Binding(
+            get: { shell.selectedPopoverTab },
+            set: { nextTab in
+                shell.selectPopoverTab(nextTab)
+            }
+        )
     }
 
     private var headerSection: some View {
@@ -370,6 +374,7 @@ struct PopoverView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
+                    Spacer(minLength: 0)
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 8) {
@@ -379,7 +384,7 @@ struct PopoverView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(height: historyListHeight)
+                    .frame(maxHeight: .infinity, alignment: .top)
                     .padding(.trailing, 2)
                 }
 
@@ -445,7 +450,9 @@ struct PopoverView: View {
                     }
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var footerSection: some View {
@@ -710,15 +717,8 @@ struct PopoverView: View {
 
     private func openHistorySessionAndShowLive(_ entry: SessionHistoryEntry) {
         if shell.openHistorySession(entry) {
-            shell.selectedPopoverTab = .live
+            shell.selectPopoverTab(.live)
         }
-    }
-
-    private func syncPopoverSize() {
-        shell.updatePopoverSize(
-            selectedTab: shell.selectedPopoverTab,
-            expandedTextPanels: expandedTextPanels
-        )
     }
 
     private func handleExpandedTextPanelsChanged(_ newValue: Bool) {
@@ -726,16 +726,6 @@ struct PopoverView: View {
             selectedTab: shell.selectedPopoverTab,
             expandedTextPanels: newValue
         )
-    }
-
-    private func handleSelectedTabChanged(_ newValue: PopoverTabSelection) {
-        shell.updatePopoverSize(
-            selectedTab: newValue,
-            expandedTextPanels: expandedTextPanels
-        )
-        if newValue == .history {
-            shell.refreshHistorySessions(preserveLoadedCount: true)
-        }
     }
 
     private var polishedBodyText: String {
@@ -1213,10 +1203,6 @@ struct PopoverView: View {
         } else {
             selectedHistorySessionIDs.insert(entry.id)
         }
-    }
-
-    private var historyListHeight: CGFloat {
-        expandedTextPanels ? 560 : 380
     }
 
     private func historyTimestamp(_ date: Date) -> String {
