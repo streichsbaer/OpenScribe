@@ -10,6 +10,7 @@ enum ProviderModelUsage {
 enum PopoverTabSelection: String {
     case live
     case history
+    case stats
 }
 
 enum ProviderBackend: String {
@@ -59,12 +60,21 @@ final class AppShell: ObservableObject {
     private static let liveCompactPopoverSize = CGSize(width: 540, height: 700)
     private static let liveExpandedPopoverSize = CGSize(width: 620, height: 980)
     private static let historyPopoverSize = CGSize(width: 620, height: 700)
+    private static let statsPopoverSize = CGSize(width: 620, height: 700)
     private static let showLiveTabHotkey = HotkeySetting(
         keyCode: 37, // ANSI L
         modifiers: UInt32(controlKey | optionKey)
     )
     private static let showHistoryTabHotkey = HotkeySetting(
         keyCode: 4, // ANSI H
+        modifiers: UInt32(controlKey | optionKey)
+    )
+    private static let showStatsTabHotkey = HotkeySetting(
+        keyCode: 1, // ANSI S
+        modifiers: UInt32(controlKey | optionKey)
+    )
+    private static let openRulesTabHotkey = HotkeySetting(
+        keyCode: 15, // ANSI R
         modifiers: UInt32(controlKey | optionKey)
     )
 
@@ -133,6 +143,7 @@ final class AppShell: ObservableObject {
     @Published private(set) var historySessions: [SessionHistoryEntry] = []
     @Published private(set) var historyHasMoreSessions: Bool = false
     @Published private(set) var historyIsLoading: Bool = false
+    @Published private(set) var statsSummary: StatsSummary = .empty
     @Published private(set) var providerModelsByBackend: [String: [String]] = [:]
     @Published private(set) var providerConnectivityByBackend: [String: ProviderConnectivityStatus] = [:]
     @Published var autoPasteOnComplete: Bool {
@@ -142,6 +153,7 @@ final class AppShell: ObservableObject {
     }
 
     var openSettingsWindowHandler: (() -> Void)?
+    var openRulesWindowHandler: (() -> Void)?
     var togglePopoverHandler: (() -> Void)?
     var showPopoverHandler: (() -> Void)?
     var updatePopoverSizeHandler: ((CGSize) -> Void)?
@@ -154,6 +166,7 @@ final class AppShell: ObservableObject {
     private let keychainStore: KeychainStore
     private let apiKeyResolver: APIKeyResolver
     private let sessionManager: SessionManager
+    private let statsStore: StatsStore
     private let audioCapture: AudioCaptureManager
     private let hotkeyManager: HotkeyManager
     private let providerFactory: ProviderFactory
@@ -180,6 +193,7 @@ final class AppShell: ObservableObject {
         self.keychainStore = KeychainStore()
         self.apiKeyResolver = APIKeyResolver(keychain: keychainStore)
         self.sessionManager = SessionManager(layout: resolvedLayout)
+        self.statsStore = StatsStore(layout: resolvedLayout)
         self.audioCapture = AudioCaptureManager()
         self.hotkeyManager = HotkeyManager()
 
@@ -211,7 +225,9 @@ final class AppShell: ObservableObject {
 
         latestPolishedTranscript = sessionManager.loadLatestPolishedTranscript() ?? ""
         refreshHistorySessions()
+        refreshStatsSummary()
 
+        normalizeReservedHotkeyConflicts()
         registerHotkeys()
         applyAppearanceMode()
         prefetchProviderCatalogsOnLaunch()
@@ -361,6 +377,10 @@ final class AppShell: ObservableObject {
         openSettingsWindowHandler?()
     }
 
+    func openRulesWindow() {
+        openRulesWindowHandler?()
+    }
+
     func togglePopoverWindow() {
         togglePopoverHandler?()
     }
@@ -393,6 +413,8 @@ final class AppShell: ObservableObject {
         selectedPopoverTab = tab
         if tab == .history {
             refreshHistorySessions(preserveLoadedCount: true)
+        } else if tab == .stats {
+            refreshStatsSummary()
         }
         updatePopoverSize(selectedTab: tab, expandedTextPanels: isTranscriptPanelsExpanded)
         if revealPopover {
@@ -496,6 +518,7 @@ final class AppShell: ObservableObject {
             rawTranscriptProviderID = transcript.providerId
             rawTranscriptModel = transcript.model
             try sessionManager.writeRaw(transcript.text, for: &session)
+            recordTranscriptionStats(session: session, transcript: transcript, rawText: transcript.text)
 
             if settings.polishEnabled {
                 do {
@@ -515,6 +538,12 @@ final class AppShell: ObservableObject {
                     polishedTranscriptProviderID = polished.providerId
                     polishedTranscriptModel = polished.model
                     try sessionManager.writePolished(polished.markdown, for: &session)
+                    recordPolishStats(
+                        session: session,
+                        polish: polished,
+                        rawText: transcript.text,
+                        polishedText: polished.markdown
+                    )
 
                     deliverOutput(
                         polished.markdown,
@@ -592,6 +621,12 @@ final class AppShell: ObservableObject {
                 self.polishedTranscriptProviderID = polished.providerId
                 self.polishedTranscriptModel = polished.model
                 try self.sessionManager.writePolished(polished.markdown, for: &session)
+                self.recordPolishStats(
+                    session: session,
+                    polish: polished,
+                    rawText: self.rawTranscript,
+                    polishedText: polished.markdown
+                )
                 try self.sessionManager.transition(&session, to: .completed, details: "Polish retry complete")
                 self.sessionState = .completed
                 self.currentSession = session
@@ -648,6 +683,7 @@ final class AppShell: ObservableObject {
                 self.rawTranscriptProviderID = transcript.providerId
                 self.rawTranscriptModel = transcript.model
                 try self.sessionManager.writeRaw(transcript.text, for: &session)
+                self.recordTranscriptionStats(session: session, transcript: transcript, rawText: transcript.text)
 
                 if self.settings.polishEnabled {
                     do {
@@ -667,6 +703,12 @@ final class AppShell: ObservableObject {
                         self.polishedTranscriptProviderID = polished.providerId
                         self.polishedTranscriptModel = polished.model
                         try self.sessionManager.writePolished(polished.markdown, for: &session)
+                        self.recordPolishStats(
+                            session: session,
+                            polish: polished,
+                            rawText: transcript.text,
+                            polishedText: polished.markdown
+                        )
 
                         self.deliverOutput(
                             polished.markdown,
@@ -901,12 +943,24 @@ final class AppShell: ObservableObject {
         historyIsLoading = false
     }
 
+    func refreshStatsSummary() {
+        statsSummary = statsStore.loadSummary()
+    }
+
     func showLiveTabFromHotkey() {
         selectPopoverTab(.live, revealPopover: true)
     }
 
     func showHistoryTabFromHotkey() {
         selectPopoverTab(.history, revealPopover: true)
+    }
+
+    func showStatsTabFromHotkey() {
+        selectPopoverTab(.stats, revealPopover: true)
+    }
+
+    func openRulesFromHotkey() {
+        openRulesWindow()
     }
 
     func loadMoreHistorySessions(mode: HistoryLoadMoreMode) {
@@ -976,6 +1030,8 @@ final class AppShell: ObservableObject {
             return expandedTextPanels ? Self.liveExpandedPopoverSize : Self.liveCompactPopoverSize
         case .history:
             return Self.historyPopoverSize
+        case .stats:
+            return Self.statsPopoverSize
         }
     }
 
@@ -1084,6 +1140,18 @@ final class AppShell: ObservableObject {
         }
     }
 
+    private func normalizeReservedHotkeyConflicts() {
+        let rulesHotkey = Self.openRulesTabHotkey.normalizedForCarbonHotkey()
+        let copyRawHotkey = settings.copyRawHotkey.normalizedForCarbonHotkey()
+        guard copyRawHotkey == rulesHotkey else {
+            return
+        }
+
+        settingsStore.update { settings in
+            settings.copyRawHotkey = .copyRawDefault
+        }
+    }
+
     private func registerHotkeys() {
         do {
             try validateUniqueHotkeys()
@@ -1136,6 +1204,18 @@ final class AppShell: ObservableObject {
                 }
             }
 
+            try hotkeyManager.register(action: .showStatsTab, setting: Self.showStatsTabHotkey) { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.showStatsTabFromHotkey()
+                }
+            }
+
+            try hotkeyManager.register(action: .openRulesTab, setting: Self.openRulesTabHotkey) { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.openRulesFromHotkey()
+                }
+            }
+
             hotkeyError = nil
         } catch {
             hotkeyError = error.localizedDescription
@@ -1152,7 +1232,9 @@ final class AppShell: ObservableObject {
             ("Toggle popover", settings.togglePopoverHotkey),
             ("Open settings", settings.openSettingsHotkey),
             ("Show Live tab", Self.showLiveTabHotkey),
-            ("Show History tab", Self.showHistoryTabHotkey)
+            ("Show History tab", Self.showHistoryTabHotkey),
+            ("Show Stats tab", Self.showStatsTabHotkey),
+            ("Open Rules tab", Self.openRulesTabHotkey)
         ]
 
         var seen: [HotkeySetting: String] = [:]
@@ -1453,6 +1535,108 @@ final class AppShell: ObservableObject {
         } else {
             statusMessage = settings.copyOnComplete ? copiedMessage : completionMessage
         }
+    }
+
+    private func recordTranscriptionStats(
+        session: SessionContext,
+        transcript: TranscriptResult,
+        rawText: String
+    ) {
+        let rawWordCount = wordCount(in: rawText)
+        let recordingDurationMs = sessionRecordingDurationMs(session)
+        let audioSeconds = Double(recordingDurationMs ?? 0) / 1_000.0
+
+        let wordsPerMinute: Double?
+        if let durationMs = recordingDurationMs, durationMs > 0 {
+            wordsPerMinute = Double(rawWordCount) / (Double(durationMs) / 60_000.0)
+        } else {
+            wordsPerMinute = nil
+        }
+
+        let event = StatsEvent(
+            id: UUID(),
+            sessionId: session.id,
+            timestamp: Date(),
+            stage: .transcription,
+            providerId: transcript.providerId,
+            model: transcript.model,
+            inputUnits: audioSeconds,
+            outputUnits: Double(rawWordCount),
+            inputUnit: .audioSeconds,
+            outputUnit: .words,
+            inputTokens: transcript.inputTokens,
+            outputTokens: transcript.outputTokens,
+            recordingDurationMs: recordingDurationMs,
+            wordsPerMinute: wordsPerMinute,
+            wordDelta: nil,
+            wordDeltaPercent: nil
+        )
+        appendStatsEvent(event)
+    }
+
+    private func recordPolishStats(
+        session: SessionContext,
+        polish: PolishResult,
+        rawText: String,
+        polishedText: String
+    ) {
+        let rawWordCount = wordCount(in: rawText)
+        let polishedWordCount = wordCount(in: polishedText)
+        let deltaWords = polishedWordCount - rawWordCount
+        let deltaPercent: Double?
+        if rawWordCount > 0 {
+            deltaPercent = (Double(deltaWords) / Double(rawWordCount)) * 100.0
+        } else {
+            deltaPercent = nil
+        }
+
+        let event = StatsEvent(
+            id: UUID(),
+            sessionId: session.id,
+            timestamp: Date(),
+            stage: .polish,
+            providerId: polish.providerId,
+            model: polish.model,
+            inputUnits: Double(rawWordCount),
+            outputUnits: Double(polishedWordCount),
+            inputUnit: .words,
+            outputUnit: .words,
+            inputTokens: polish.inputTokens,
+            outputTokens: polish.outputTokens,
+            recordingDurationMs: nil,
+            wordsPerMinute: nil,
+            wordDelta: deltaWords,
+            wordDeltaPercent: deltaPercent
+        )
+        appendStatsEvent(event)
+    }
+
+    private func appendStatsEvent(_ event: StatsEvent) {
+        do {
+            try statsStore.append(event)
+            refreshStatsSummary()
+        } catch {
+            // Stats persistence is best-effort and should not block session completion.
+        }
+    }
+
+    private func sessionRecordingDurationMs(_ session: SessionContext) -> Int? {
+        if let durationMs = session.metadata.durationMs, durationMs > 0 {
+            return durationMs
+        }
+        guard let stoppedAt = session.metadata.stoppedAt else {
+            return nil
+        }
+        let durationMs = Int(stoppedAt.timeIntervalSince(session.metadata.createdAt) * 1_000)
+        return durationMs > 0 ? durationMs : nil
+    }
+
+    private func wordCount(in text: String) -> Int {
+        text
+            .split { character in
+                character.isWhitespace || character.isNewline
+            }
+            .count
     }
 
     private func beginPolishProgressTracking() {

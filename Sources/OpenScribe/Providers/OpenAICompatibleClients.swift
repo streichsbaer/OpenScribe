@@ -1,5 +1,11 @@
 import Foundation
 
+struct ProviderTextResponse {
+    let text: String
+    let inputTokens: Int?
+    let outputTokens: Int?
+}
+
 struct OpenAITranscriptionResponse: Codable {
     let text: String?
 }
@@ -73,6 +79,22 @@ struct OpenAIChatRequest: Codable {
 }
 
 struct OpenAIChatResponse: Codable {
+    struct Usage: Codable {
+        let promptTokens: Int?
+        let completionTokens: Int?
+        let inputTokens: Int?
+        let outputTokens: Int?
+        let totalTokens: Int?
+
+        private enum CodingKeys: String, CodingKey {
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+            case inputTokens = "input_tokens"
+            case outputTokens = "output_tokens"
+            case totalTokens = "total_tokens"
+        }
+    }
+
     struct ContentPart: Codable {
         let type: String?
         let text: String?
@@ -124,6 +146,7 @@ struct OpenAIChatResponse: Codable {
     }
 
     let choices: [Choice]
+    let usage: Usage?
 }
 
 enum OpenAICompatibleError: Error, LocalizedError {
@@ -158,7 +181,7 @@ func performWhisperRequest(
     audioFileURL: URL,
     language: String?,
     extraFields: [String: String] = [:]
-) async throws -> String {
+) async throws -> ProviderTextResponse {
     let builder = MultipartFormDataBuilder()
     var fields: [String: String] = ["model": model]
 
@@ -195,13 +218,14 @@ func performWhisperRequest(
     if let payload = try? JSONDecoder().decode(OpenAITranscriptionResponse.self, from: data),
        let text = payload.text?.trimmingCharacters(in: .whitespacesAndNewlines),
        !text.isEmpty {
-        return text
+        let usage = extractTokenUsage(from: data)
+        return ProviderTextResponse(text: text, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens)
     }
 
     if let text = String(data: data, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines),
        !text.isEmpty {
-        return text
+        return ProviderTextResponse(text: text, inputTokens: nil, outputTokens: nil)
     }
 
     throw ProviderError.invalidResponse
@@ -213,7 +237,7 @@ func performChatRequest(
     model: String,
     systemPrompt: String,
     userPrompt: String
-) async throws -> String {
+) async throws -> ProviderTextResponse {
     let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     let temperature: Double? = normalizedModel.hasPrefix("gpt-5") ? nil : 0.1
 
@@ -248,7 +272,14 @@ func performChatRequest(
         throw ProviderError.invalidResponse
     }
 
-    return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalizedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+    let inputTokens = payload.usage?.inputTokens ?? payload.usage?.promptTokens
+    let outputTokens = payload.usage?.outputTokens ?? payload.usage?.completionTokens
+    return ProviderTextResponse(
+        text: normalizedContent,
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
+    )
 }
 
 func performAudioTranscriptionViaChatRequest(
@@ -257,7 +288,7 @@ func performAudioTranscriptionViaChatRequest(
     model: String,
     audioFileURL: URL,
     language: String?
-) async throws -> String {
+) async throws -> ProviderTextResponse {
     let preparedAudio = try prepareAudioForInputAudioPayload(audioFileURL)
     defer {
         if let cleanupURL = preparedAudio.cleanupURL {
@@ -314,7 +345,39 @@ func performAudioTranscriptionViaChatRequest(
         throw ProviderError.invalidResponse
     }
 
-    return content
+    let inputTokens = payload.usage?.inputTokens ?? payload.usage?.promptTokens
+    let outputTokens = payload.usage?.outputTokens ?? payload.usage?.completionTokens
+    return ProviderTextResponse(
+        text: content,
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
+    )
+}
+
+private func extractTokenUsage(from data: Data) -> (inputTokens: Int?, outputTokens: Int?) {
+    guard let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let usage = raw["usage"] as? [String: Any] else {
+        return (nil, nil)
+    }
+    let inputTokens = extractInt(from: usage, keys: ["input_tokens", "prompt_tokens"])
+    let outputTokens = extractInt(from: usage, keys: ["output_tokens", "completion_tokens"])
+    return (inputTokens, outputTokens)
+}
+
+private func extractInt(from payload: [String: Any], keys: [String]) -> Int? {
+    for key in keys {
+        if let value = payload[key] as? Int {
+            return value
+        }
+        if let value = payload[key] as? NSNumber {
+            return value.intValue
+        }
+        if let value = payload[key] as? String,
+           let parsed = Int(value) {
+            return parsed
+        }
+    }
+    return nil
 }
 
 private func mimeTypeForWhisperUpload(_ url: URL) -> String {

@@ -13,20 +13,22 @@ final class GroqPolishProvider: PolishProvider {
 
     func polish(rawText: String, rulesMarkdown: String, model: String) async throws -> PolishResult {
         let start = Date()
-        let content = try await performChatRequest(
+        let response = try await performChatRequest(
             endpoint: endpoint,
             apiKey: apiKey,
             model: model,
             systemPrompt: "You convert speech transcripts into clean Markdown. Return Markdown only.",
             userPrompt: makePolishUserPrompt(rawText: rawText, rulesMarkdown: rulesMarkdown)
         )
-        let polished = sanitizePolishedOutput(unwrapCodeBlockIfNeeded(content), rawText: rawText)
+        let polished = sanitizePolishedOutput(unwrapCodeBlockIfNeeded(response.text), rawText: rawText)
 
         return PolishResult(
             markdown: polished,
             providerId: id,
             model: model,
-            latencyMs: Int(Date().timeIntervalSince(start) * 1_000)
+            latencyMs: Int(Date().timeIntervalSince(start) * 1_000),
+            inputTokens: response.inputTokens,
+            outputTokens: response.outputTokens
         )
     }
 }

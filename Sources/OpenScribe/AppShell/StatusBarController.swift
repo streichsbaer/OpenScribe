@@ -91,6 +91,9 @@ final class StatusBarController: NSObject {
         shell.openSettingsWindowHandler = { [weak self] in
             self?.openSettings()
         }
+        shell.openRulesWindowHandler = { [weak self] in
+            self?.openRulesSettings()
+        }
         shell.togglePopoverHandler = { [weak self] in
             self?.togglePopoverFromHotkey()
         }
@@ -152,6 +155,11 @@ final class StatusBarController: NSObject {
         settingsWindowController.show()
     }
 
+    @objc private func openRulesSettings() {
+        settingsWindowController.selectTab(.rules)
+        settingsWindowController.show()
+    }
+
     func openSettingsFromShortcut() {
         openSettings()
     }
@@ -203,8 +211,10 @@ final class StatusBarController: NSObject {
         let directHotkeyHistoryImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-history-direct.png")
         let clickHistoryImageURL = outputDirectory.appendingPathComponent("openscribe-window-click-history.png")
         let clickHistoryWindowImageURL = outputDirectory.appendingPathComponent("openscribe-window-click-history-full.png")
+        let clickStatsImageURL = outputDirectory.appendingPathComponent("openscribe-window-click-stats.png")
         let hotkeyHistoryImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-history.png")
         let hotkeyHistoryWindowImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-history-full.png")
+        let hotkeyStatsImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-stats.png")
         let hotkeyLiveImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-live.png")
         let liveExpandedContentImageURL = outputDirectory.appendingPathComponent("openscribe-window-live-expanded-content.png")
         let settingsImageURL = outputDirectory.appendingPathComponent("settings-window.png")
@@ -212,6 +222,7 @@ final class StatusBarController: NSObject {
 
         var popoverStatus = "fail"
         var hotkeyTabsStatus = "fail"
+        var statsCaptureStatus = "fail"
         var hotkeyDispatchStatus = "pass"
         var tabClickDispatchStatus = "pass"
         var historyDirectLayoutParityStatus = "fail"
@@ -262,6 +273,11 @@ final class StatusBarController: NSObject {
                 shell.showHistoryTabFromHotkey()
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
+            if shell.selectedPopoverTab != .history {
+                debugLines.append("hotkeyDispatch[history-direct]-fallback=true")
+                shell.showHistoryTabFromHotkey()
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
             let historyDirectHotkeyView = popover.contentViewController?.view.window?.contentView
                 ?? popover.contentViewController?.view
             let directHotkeyHistoryMetrics = currentPopoverLayoutMetrics()
@@ -276,6 +292,43 @@ final class StatusBarController: NSObject {
                 hotkeyCaptureFailures += 1
                 debugLines.append("popoverDirectHotkeyHistoryCapture=fail")
             }
+
+            let liveTabClickedBeforeStatsHotkey = selectPopoverTabViaSegmentedControlForUISmoke(.live)
+            debugLines.append("tabClickDispatch[live-before-stats-hotkey]=\(liveTabClickedBeforeStatsHotkey)")
+            if !liveTabClickedBeforeStatsHotkey {
+                tabClickDispatchStatus = "fail"
+                shell.selectPopoverTab(.live)
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
+            let statsHotkeyDispatched = triggerTabHotkeyForUISmoke(.stats)
+            debugLines.append("hotkeyDispatch[stats]=\(statsHotkeyDispatched)")
+            if !statsHotkeyDispatched {
+                hotkeyDispatchStatus = "fail"
+                shell.showStatsTabFromHotkey()
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            if shell.selectedPopoverTab != .stats {
+                debugLines.append("hotkeyDispatch[stats]-fallback=true")
+                shell.showStatsTabFromHotkey()
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+            let statsHotkeyView = popover.contentViewController?.view.window?.contentView
+                ?? popover.contentViewController?.view
+            if captureViewSnapshot(statsHotkeyView, to: hotkeyStatsImageURL) {
+                debugLines.append("popoverHotkeyStatsCapture=pass")
+            } else {
+                hotkeyCaptureFailures += 1
+                debugLines.append("popoverHotkeyStatsCapture=fail")
+            }
+
+            let liveTabClickedAfterStatsHotkey = selectPopoverTabViaSegmentedControlForUISmoke(.live)
+            debugLines.append("tabClickDispatch[live-after-stats-hotkey]=\(liveTabClickedAfterStatsHotkey)")
+            if !liveTabClickedAfterStatsHotkey {
+                tabClickDispatchStatus = "fail"
+                shell.selectPopoverTab(.live)
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
 
             let liveTabClickedBeforeClickHistory = selectPopoverTabViaSegmentedControlForUISmoke(.live)
             debugLines.append("tabClickDispatch[live-before-click-history]=\(liveTabClickedBeforeClickHistory)")
@@ -311,6 +364,31 @@ final class StatusBarController: NSObject {
                 debugLines.append("popoverClickHistoryWindowCapture=fail")
             }
 
+            let statsTabClickedForCapture = selectPopoverTabViaSegmentedControlForUISmoke(.stats)
+            debugLines.append("tabClickDispatch[stats-capture]=\(statsTabClickedForCapture)")
+            if !statsTabClickedForCapture {
+                tabClickDispatchStatus = "fail"
+                shell.selectPopoverTab(.stats)
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            let statsClickView = popover.contentViewController?.view.window?.contentView
+                ?? popover.contentViewController?.view
+            if captureViewSnapshot(statsClickView, to: clickStatsImageURL) {
+                statsCaptureStatus = "pass"
+                debugLines.append("popoverClickStatsCapture=pass")
+            } else {
+                statsCaptureStatus = "fail"
+                debugLines.append("popoverClickStatsCapture=fail")
+            }
+
+            let liveTabClickedAfterStatsCapture = selectPopoverTabViaSegmentedControlForUISmoke(.live)
+            debugLines.append("tabClickDispatch[live-after-stats-capture]=\(liveTabClickedAfterStatsCapture)")
+            if !liveTabClickedAfterStatsCapture {
+                tabClickDispatchStatus = "fail"
+                shell.selectPopoverTab(.live)
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
             if let clickHistoryMetrics, let directHotkeyHistoryMetrics {
                 let directParity = evaluateHistoryLayoutParity(
                     clickMetrics: clickHistoryMetrics,
@@ -342,6 +420,11 @@ final class StatusBarController: NSObject {
                 shell.showHistoryTabFromHotkey()
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
+            if shell.selectedPopoverTab != .history {
+                debugLines.append("hotkeyDispatch[history]-fallback=true")
+                shell.showHistoryTabFromHotkey()
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
             let historyHotkeyView = popover.contentViewController?.view.window?.contentView
                 ?? popover.contentViewController?.view
             let hotkeyHistoryMetrics = currentPopoverLayoutMetrics()
@@ -407,6 +490,11 @@ final class StatusBarController: NSObject {
                 shell.showLiveTabFromHotkey()
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
+            if shell.selectedPopoverTab != .live {
+                debugLines.append("hotkeyDispatch[live]-fallback=true")
+                shell.showLiveTabFromHotkey()
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
             let liveHotkeyView = popover.contentViewController?.view.window?.contentView
                 ?? popover.contentViewController?.view
             if let liveHotkeyView {
@@ -452,6 +540,7 @@ final class StatusBarController: NSObject {
             historyLayoutParityStatus = "fail"
             historyLayoutParityReason = "popover-not-shown"
             liveExpandedContentCaptureStatus = "fail"
+            statsCaptureStatus = "fail"
             debugLines.append("popoverShown=false")
         }
         hotkeyTabsStatus = hotkeyCaptureFailures == 0 ? "pass" : "missing:\(hotkeyCaptureFailures)"
@@ -498,6 +587,7 @@ final class StatusBarController: NSObject {
         hotkeyPopoverTabsFailed=\(hotkeyCaptureFailures)
         hotkeyDispatch=\(hotkeyDispatchStatus)
         tabClickDispatch=\(tabClickDispatchStatus)
+        statsCapture=\(statsCaptureStatus)
         historyLayoutParityDirect=\(historyDirectLayoutParityStatus)
         historyLayoutParityDirectReason=\(historyDirectLayoutParityReason)
         historyLayoutParity=\(historyLayoutParityStatus)
@@ -777,7 +867,15 @@ final class StatusBarController: NSObject {
             return false
         }
 
-        let targetLabel = tab == .live ? "live" : "history"
+        let targetLabel: String
+        switch tab {
+        case .live:
+            targetLabel = "live"
+        case .history:
+            targetLabel = "history"
+        case .stats:
+            targetLabel = "stats"
+        }
         let targetIndex = (0..<control.segmentCount).first { index in
             (control.label(forSegment: index) ?? "").lowercased() == targetLabel
         }
@@ -814,6 +912,8 @@ final class StatusBarController: NSObject {
             keyCode = 37 // ANSI L
         case .history:
             keyCode = 4 // ANSI H
+        case .stats:
+            keyCode = 1 // ANSI S
         }
 
         guard let source = CGEventSource(stateID: .combinedSessionState),

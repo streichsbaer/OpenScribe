@@ -60,8 +60,10 @@ rm -f "$OUT_DIR"/build.log \
       "$OUT_DIR"/openscribe-window-hotkey-history-direct.png \
       "$OUT_DIR"/openscribe-window-click-history.png \
       "$OUT_DIR"/openscribe-window-click-history-full.png \
+      "$OUT_DIR"/openscribe-window-click-stats.png \
       "$OUT_DIR"/openscribe-window-hotkey-history.png \
       "$OUT_DIR"/openscribe-window-hotkey-history-full.png \
+      "$OUT_DIR"/openscribe-window-hotkey-stats.png \
       "$OUT_DIR"/openscribe-window-hotkey-live.png \
       "$OUT_DIR"/openscribe-window-live-expanded-content.png \
       "$OUT_DIR"/settings-window.png \
@@ -97,6 +99,7 @@ app_pid=""
 app_launch_status="pass"
 popover_capture_status="skipped"
 click_history_capture_status="skipped"
+click_stats_capture_status="skipped"
 settings_capture_status="skipped"
 settings_tab_capture_status="skipped"
 menubar_icon_capture_status="skipped"
@@ -121,8 +124,10 @@ if OPENSCRIBE_UI_SMOKE=1 OPENSCRIBE_UI_SMOKE_OUT="$OUT_DIR" swift run OpenScribe
     "$OUT_DIR/openscribe-window-hotkey-history-direct.png"
     "$OUT_DIR/openscribe-window-click-history.png"
     "$OUT_DIR/openscribe-window-click-history-full.png"
+    "$OUT_DIR/openscribe-window-click-stats.png"
     "$OUT_DIR/openscribe-window-hotkey-history.png"
     "$OUT_DIR/openscribe-window-hotkey-history-full.png"
+    "$OUT_DIR/openscribe-window-hotkey-stats.png"
     "$OUT_DIR/openscribe-window-hotkey-live.png"
     "$OUT_DIR/openscribe-window-live-expanded-content.png"
     "$OUT_DIR/settings-window.png"
@@ -178,9 +183,16 @@ else
   click_history_capture_status="missing"
 fi
 
+if [[ -s "$OUT_DIR/openscribe-window-click-stats.png" ]]; then
+  click_stats_capture_status="pass"
+else
+  click_stats_capture_status="missing"
+fi
+
 hotkey_tab_files=(
   "$OUT_DIR/openscribe-window-hotkey-history-direct.png"
   "$OUT_DIR/openscribe-window-hotkey-history.png"
+  "$OUT_DIR/openscribe-window-hotkey-stats.png"
   "$OUT_DIR/openscribe-window-hotkey-live.png"
 )
 missing_hotkey_tab_count=0
@@ -203,6 +215,7 @@ fi
 
 if [[ -s "$OUT_DIR/ui-smoke-status.txt" ]]; then
   parsed_tab_click_dispatch_status="$(awk -F= '/^tabClickDispatch=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
+  parsed_click_stats_capture_status="$(awk -F= '/^statsCapture=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
   parsed_hotkey_dispatch_status="$(awk -F= '/^hotkeyDispatch=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
   parsed_parity_direct_status="$(awk -F= '/^historyLayoutParityDirect=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
   parsed_parity_direct_reason="$(awk -F= '/^historyLayoutParityDirectReason=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | sed 's/^[[:space:]]*//')"
@@ -216,6 +229,9 @@ if [[ -s "$OUT_DIR/ui-smoke-status.txt" ]]; then
   fi
   if [[ -n "$parsed_hotkey_dispatch_status" ]]; then
     hotkey_dispatch_status="$parsed_hotkey_dispatch_status"
+  fi
+  if [[ -n "$parsed_click_stats_capture_status" ]]; then
+    click_stats_capture_status="$parsed_click_stats_capture_status"
   fi
   if [[ -n "$parsed_parity_direct_status" ]]; then
     history_layout_parity_direct_status="$parsed_parity_direct_status"
@@ -291,6 +307,9 @@ fi
 if [[ "$click_history_capture_status" != "pass" ]]; then
   overall_status=1
 fi
+if [[ "$click_stats_capture_status" != "pass" ]]; then
+  overall_status=1
+fi
 if [[ "$hotkey_tab_capture_status" != "pass" ]]; then
   overall_status=1
 fi
@@ -331,6 +350,7 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - App launch: $app_launch_status
 - OpenScribe window screenshot: $popover_capture_status
 - Click History screenshot: $click_history_capture_status
+- Click Stats screenshot: $click_stats_capture_status
 - Hotkey tab screenshots: $hotkey_tab_capture_status
 - Tab click dispatch path: $tab_click_dispatch_status
 - Hotkey dispatch path: $hotkey_dispatch_status
@@ -356,8 +376,10 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - openscribe-window-hotkey-history-direct.png
 - openscribe-window-click-history.png
 - openscribe-window-click-history-full.png
+- openscribe-window-click-stats.png
 - openscribe-window-hotkey-history.png
 - openscribe-window-hotkey-history-full.png
+- openscribe-window-hotkey-stats.png
 - openscribe-window-hotkey-live.png
 - openscribe-window-live-expanded-content.png
 - settings-window.png

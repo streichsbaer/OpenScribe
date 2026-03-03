@@ -57,7 +57,14 @@ final class WhisperCppProvider: TranscriptionProvider {
         try? FileManager.default.removeItem(at: outputFile)
 
         let latency = Int(Date().timeIntervalSince(start) * 1_000)
-        return TranscriptResult(text: text, providerId: id, model: model, latencyMs: latency)
+        return TranscriptResult(
+            text: text,
+            providerId: id,
+            model: model,
+            latencyMs: latency,
+            inputTokens: nil,
+            outputTokens: nil
+        )
     }
 
     private func prepareInputWAV(for audioFileURL: URL) throws -> URL {

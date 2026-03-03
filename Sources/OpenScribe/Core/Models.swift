@@ -35,6 +35,8 @@ struct TranscriptResult: Codable {
     let providerId: String
     let model: String
     let latencyMs: Int
+    let inputTokens: Int?
+    let outputTokens: Int?
 }
 
 struct PolishResult: Codable {
@@ -42,6 +44,8 @@ struct PolishResult: Codable {
     let providerId: String
     let model: String
     let latencyMs: Int
+    let inputTokens: Int?
+    let outputTokens: Int?
 }
 
 struct SessionStateTransition: Codable {
@@ -91,10 +95,11 @@ struct HotkeySetting: Codable, Equatable, Hashable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    // Space, ANSI P, ANSI R, and ANSI V are stable virtual keycodes on macOS.
+    // Space, ANSI P, ANSI R, ANSI T, and ANSI V are stable virtual keycodes on macOS.
     private static let spaceKeyCode: UInt32 = 49
     private static let pKeyCode: UInt32 = 35
     private static let rKeyCode: UInt32 = 15
+    private static let tKeyCode: UInt32 = 17
     private static let vKeyCode: UInt32 = 9
     private static let oKeyCode: UInt32 = 31
     private static let commaKeyCode: UInt32 = 43
@@ -111,7 +116,7 @@ struct HotkeySetting: Codable, Equatable, Hashable {
     )
 
     static let copyRawDefault = HotkeySetting(
-        keyCode: rKeyCode,
+        keyCode: tKeyCode,
         modifiers: UInt32(controlKey | optionKey)
     )
 

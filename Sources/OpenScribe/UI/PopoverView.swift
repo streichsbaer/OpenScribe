@@ -15,6 +15,7 @@ struct PopoverView: View {
     @State private var pendingDeleteEntries: [SessionHistoryEntry] = []
     @State private var hoverHint: String?
     private let infoLabelWidth: CGFloat = 44
+    private static let streakUnlockDays = 3
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -23,8 +24,11 @@ struct PopoverView: View {
 
             if shell.selectedPopoverTab == .live {
                 liveSection
-            } else {
+            } else if shell.selectedPopoverTab == .history {
                 historySection
+                    .frame(maxHeight: .infinity, alignment: .top)
+            } else {
+                statsSection
                     .frame(maxHeight: .infinity, alignment: .top)
             }
 
@@ -32,7 +36,7 @@ struct PopoverView: View {
         }
         .padding(12)
         .frame(width: popoverWidth)
-        .frame(maxHeight: .infinity, alignment: shell.selectedPopoverTab == .history ? .top : .center)
+        .frame(maxHeight: .infinity, alignment: shell.selectedPopoverTab == .live ? .center : .top)
         .onAppear {
             shell.selectPopoverTab(shell.selectedPopoverTab)
             syncRetryPolishSelection()
@@ -102,10 +106,11 @@ struct PopoverView: View {
         Picker("Popover tab", selection: mainTabSelection) {
             Text("Live").tag(PopoverTabSelection.live)
             Text("History").tag(PopoverTabSelection.history)
+            Text("Stats").tag(PopoverTabSelection.stats)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .frame(width: 210)
+        .frame(width: 300)
     }
 
     private var mainTabSelection: Binding<PopoverTabSelection> {
@@ -463,6 +468,266 @@ struct PopoverView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var statsSection: some View {
+        card(title: "Stats", trailing: {
+            Button {
+                shell.refreshStatsSummary()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .instantHint("Refresh usage stats", hoverHint: $hoverHint)
+        }) {
+            if shell.statsSummary.totalEvents == 0 {
+                Text("No stats yet. Complete a transcription to start tracking usage.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+                Spacer(minLength: 0)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        statsHeroHeader
+                        statsHeroGrid
+                        statsOverviewSection
+                        statsLatestRunSection
+                        statsCurrentSessionSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.trailing, 2)
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var statsHeroHeader: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("You've been scribing.")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.primary)
+            Text("A snapshot of your dictation momentum.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private var statsHeroGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(minimum: 180), spacing: 10),
+                GridItem(.flexible(minimum: 180), spacing: 10)
+            ],
+            spacing: 10
+        ) {
+            statsHeroCard(
+                title: "Current streak",
+                value: "\(shell.statsSummary.currentActiveDayStreak) \(shell.statsSummary.currentActiveDayStreak == 1 ? "day" : "days")",
+                subtitle: streakSummarySubtitle,
+                accent: .orange,
+                icon: "🔥"
+            )
+
+            statsHeroCard(
+                title: "Average speed",
+                value: "\(formattedStatRate(shell.statsSummary.averageWordsPerMinute)) WPM",
+                subtitle: "Estimated from raw transcript output.",
+                accent: .blue,
+                icon: "🚀"
+            )
+
+            statsHeroCard(
+                title: "Total words",
+                value: formattedStatCount(shell.statsSummary.spokenWords),
+                subtitle: wordMilestoneSubtitle,
+                accent: .mint,
+                icon: "📚"
+            )
+
+            statsHeroCard(
+                title: "Sessions",
+                value: formattedStatCount(shell.statsSummary.sessionCount),
+                subtitle: "\(shell.statsSummary.transcriptionRuns) transcription runs logged.",
+                accent: .purple,
+                icon: "🗂️"
+            )
+        }
+    }
+
+    private func statsHeroCard(
+        title: String,
+        value: String,
+        subtitle: String,
+        accent: Color,
+        icon: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.semibold))
+                .kerning(0.8)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(value)
+                    .font(.title3.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(icon)
+                    .font(.title3)
+            }
+
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(0.16),
+                            Color(NSColor.textBackgroundColor).opacity(0.88)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(accent.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    private var statsOverviewSection: some View {
+        transcriptSubsection {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Overview")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                statsMetricRow("Current streak", "\(shell.statsSummary.currentActiveDayStreak) days")
+                statsMetricRow("Longest streak", "\(shell.statsSummary.longestActiveDayStreak) days")
+                statsMetricRow("Avg day gap", formattedActiveDayGap)
+                statsMetricRow("Last 7 days", "\(shell.statsSummary.wordsLast7Days) words")
+                statsMetricRow("Last 30 days", "\(shell.statsSummary.wordsLast30Days) words")
+                statsMetricRow("Raw to polished", formattedPolishDelta)
+                statsMetricRow("Book equivalent", averageBookEquivalent)
+                statsMetricRow("Most used model", mostUsedModelLabel)
+                statsMetricRow("Events", "\(shell.statsSummary.totalEvents)")
+                statsMetricRow("Latest event", formattedStatsDate(shell.statsSummary.lastEventAt))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statsLatestRunSection: some View {
+        transcriptSubsection {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Latest run metrics")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                if let latestTranscription = shell.statsSummary.latestTranscriptionEvent {
+                    latestRunRow(
+                        title: "Transcription",
+                        event: latestTranscription
+                    )
+                } else {
+                    Text("No transcription run recorded yet.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let latestPolish = shell.statsSummary.latestPolishEvent {
+                    latestRunRow(
+                        title: "Polish",
+                        event: latestPolish
+                    )
+                } else {
+                    Text("No polish run recorded yet.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func latestRunRow(title: String, event: StatsEvent) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("\(title): \(providerDisplayName(for: event.providerId)) / \(event.model)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Text("In \(formattedStatsUnits(event.inputUnits, unit: event.inputUnit)) | Out \(formattedStatsUnits(event.outputUnits, unit: event.outputUnit))")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Text("Tokens \(formattedTokenPair(input: event.inputTokens, output: event.outputTokens))")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Text("Updated \(formattedStatsDate(event.timestamp))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statsCurrentSessionSection: some View {
+        transcriptSubsection {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Current session details")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                if let session = shell.currentSession {
+                    statsMetricRow("Session", shortSessionID(session.id))
+                    statsMetricRow("State", session.metadata.state.displayLabel)
+                    statsMetricRow("Created", historyTimestamp(session.metadata.createdAt))
+                    statsMetricRow("Duration", formattedSessionDuration(session))
+                    statsMetricRow("Transcribe", "\(providerDisplayName(for: session.metadata.sttProvider)) / \(session.metadata.sttModel)")
+                    statsMetricRow("Raw units", "\(currentRawWordCount) words from \(formattedStatsUnits(sessionDurationSeconds(session), unit: .audioSeconds))")
+                    statsMetricRow("Raw WPM", formattedCurrentSessionWPM(session))
+                    statsMetricRow("Polish", "\(providerDisplayName(for: session.metadata.polishProvider)) / \(session.metadata.polishModel)")
+                    statsMetricRow("Polished units", "\(currentPolishedWordCount) words")
+                    statsMetricRow("Session delta", formattedCurrentSessionDelta)
+                } else {
+                    Text("Open any history session to view detailed per-session stats.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func statsMetricRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 108, alignment: .leading)
+            Text(value)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .truncationMode(.tail)
+        }
     }
 
     private var footerSection: some View {
@@ -1239,8 +1504,174 @@ struct PopoverView: View {
         }
     }
 
+    private func formattedStatsUnits(_ value: Double, unit: StatsUnit) -> String {
+        switch unit {
+        case .words:
+            return "\(Int(value.rounded())) words"
+        case .audioSeconds:
+            return String(format: "%.1f sec", value)
+        }
+    }
+
+    private func formattedTokenPair(input: Int?, output: Int?) -> String {
+        if input == nil, output == nil {
+            return "in n/a | out n/a"
+        }
+        let inputLabel = input.map(String.init) ?? "n/a"
+        let outputLabel = output.map(String.init) ?? "n/a"
+        return "in \(inputLabel) | out \(outputLabel)"
+    }
+
+    private func formattedStatRate(_ value: Double?) -> String {
+        guard let value else {
+            return "-"
+        }
+        return String(format: "%.1f", value)
+    }
+
+    private func formattedStatCount(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private var streakSummarySubtitle: String {
+        let current = shell.statsSummary.currentActiveDayStreak
+        let longest = shell.statsSummary.longestActiveDayStreak
+        let unlockDays = Self.streakUnlockDays
+        if current < unlockDays {
+            return "\(current)/\(unlockDays) active days | Longest \(longest) days"
+        }
+        return "Longest \(longest) days | Avg gap \(formattedActiveDayGap)"
+    }
+
+    private var formattedActiveDayGap: String {
+        guard let average = shell.statsSummary.averageDaysBetweenActiveDays else {
+            return "n/a"
+        }
+        return "\(String(format: "%.1f", average)) days"
+    }
+
+    private var averageBookEquivalent: String {
+        let wordsPerAverageBook = 80_000.0
+        let books = Double(shell.statsSummary.spokenWords) / wordsPerAverageBook
+        return String(format: "~%.2f average books", books)
+    }
+
+    private var wordMilestoneSubtitle: String {
+        let spokenWords = shell.statsSummary.spokenWords
+        guard spokenWords > 0 else {
+            return "Complete a transcription to unlock milestones."
+        }
+
+        let levels: [(name: String, words: Int)] = [
+            ("Wikipedia article", 650),
+            ("Harry Potter 1", 76_900),
+            ("average book", 80_000),
+            ("Harry Potter series", 1_084_000)
+        ]
+
+        let booksLine = averageBookEquivalent
+        if let next = levels.first(where: { spokenWords < $0.words }) {
+            let remaining = next.words - spokenWords
+            return "\(booksLine) | \(formattedStatCount(remaining)) words to \(next.name)"
+        }
+
+        return "\(booksLine) | You passed every milestone."
+    }
+
+    private var formattedPolishDelta: String {
+        let deltaWords = shell.statsSummary.polishDeltaWords
+        let signedWords = deltaWords >= 0 ? "+\(deltaWords)" : "\(deltaWords)"
+        guard let percent = shell.statsSummary.polishDeltaPercent else {
+            return "\(signedWords) words"
+        }
+        let signedPercent = percent >= 0 ? "+\(String(format: "%.1f", percent))" : String(format: "%.1f", percent)
+        return "\(signedWords) words (\(signedPercent)%)"
+    }
+
+    private var mostUsedModelLabel: String {
+        guard let usage = shell.statsSummary.providerUsage.first else {
+            return "-"
+        }
+        return "\(usage.stage.displayLabel): \(providerDisplayName(for: usage.providerId)) / \(usage.model) (\(usage.runCount)x)"
+    }
+
+    private var currentRawWordCount: Int {
+        wordCount(shell.rawTranscript)
+    }
+
+    private var currentPolishedWordCount: Int {
+        let polished = shell.polishedTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if polished.isEmpty {
+            return 0
+        }
+        return wordCount(polished)
+    }
+
+    private var formattedCurrentSessionDelta: String {
+        guard currentPolishedWordCount > 0 else {
+            return "-"
+        }
+        let delta = currentPolishedWordCount - currentRawWordCount
+        let signedDelta = delta >= 0 ? "+\(delta)" : "\(delta)"
+        guard currentRawWordCount > 0 else {
+            return "\(signedDelta) words"
+        }
+        let percent = (Double(delta) / Double(currentRawWordCount)) * 100.0
+        let signedPercent = percent >= 0 ? "+\(String(format: "%.1f", percent))" : String(format: "%.1f", percent)
+        return "\(signedDelta) words (\(signedPercent)%)"
+    }
+
+    private func formattedCurrentSessionWPM(_ session: SessionContext) -> String {
+        let seconds = sessionDurationSeconds(session)
+        guard seconds > 0 else {
+            return "-"
+        }
+        let wpm = (Double(currentRawWordCount) / Double(seconds)) * 60.0
+        return "\(String(format: "%.1f", wpm))"
+    }
+
+    private func formattedSessionDuration(_ session: SessionContext) -> String {
+        let seconds = Int(sessionDurationSeconds(session).rounded())
+        return formattedDuration(seconds)
+    }
+
+    private func sessionDurationSeconds(_ session: SessionContext) -> Double {
+        if let durationMs = session.metadata.durationMs, durationMs > 0 {
+            return Double(durationMs) / 1_000.0
+        }
+        if let stoppedAt = session.metadata.stoppedAt {
+            let ms = max(0, stoppedAt.timeIntervalSince(session.metadata.createdAt) * 1_000.0)
+            return ms / 1_000.0
+        }
+        return 0
+    }
+
+    private func shortSessionID(_ id: UUID) -> String {
+        String(id.uuidString.prefix(8))
+    }
+
+    private func wordCount(_ text: String) -> Int {
+        text
+            .split { character in
+                character.isWhitespace || character.isNewline
+            }
+            .count
+    }
+
+    private func formattedStatsDate(_ date: Date?) -> String {
+        guard let date else {
+            return "-"
+        }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
     private var popoverWidth: CGFloat {
-        (shell.selectedPopoverTab == .history || expandedTextPanels) ? 620 : 540
+        (shell.selectedPopoverTab == .history || shell.selectedPopoverTab == .stats || expandedTextPanels) ? 620 : 540
     }
 
 }

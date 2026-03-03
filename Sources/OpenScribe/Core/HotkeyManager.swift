@@ -10,6 +10,8 @@ enum HotkeyAction: UInt32, CaseIterable {
     case copyRaw = 6
     case showLiveTab = 7
     case showHistoryTab = 8
+    case showStatsTab = 9
+    case openRulesTab = 10
 }
 
 enum HotkeyError: Error, LocalizedError {

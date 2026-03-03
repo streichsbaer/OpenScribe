@@ -38,8 +38,10 @@ zsh .agents/skills/ui-smoke/scripts/run.sh --out artifacts/ui-smoke/latest
 - `openscribe-window-hotkey-history-direct.png`
 - `openscribe-window-click-history.png`
 - `openscribe-window-click-history-full.png`
+- `openscribe-window-click-stats.png`
 - `openscribe-window-hotkey-history.png`
 - `openscribe-window-hotkey-history-full.png`
+- `openscribe-window-hotkey-stats.png`
 - `openscribe-window-hotkey-live.png`
 - `openscribe-window-live-expanded-content.png`
 - `settings-window.png`

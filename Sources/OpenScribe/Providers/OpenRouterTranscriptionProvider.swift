@@ -13,7 +13,7 @@ final class OpenRouterTranscriptionProvider: TranscriptionProvider {
 
     func transcribe(audioFileURL: URL, language: String?, model: String) async throws -> TranscriptResult {
         let start = Date()
-        let text = try await performAudioTranscriptionViaChatRequest(
+        let response = try await performAudioTranscriptionViaChatRequest(
             endpoint: endpoint,
             apiKey: apiKey,
             model: model,
@@ -22,10 +22,12 @@ final class OpenRouterTranscriptionProvider: TranscriptionProvider {
         )
 
         return TranscriptResult(
-            text: text,
+            text: response.text,
             providerId: id,
             model: model,
-            latencyMs: Int(Date().timeIntervalSince(start) * 1_000)
+            latencyMs: Int(Date().timeIntervalSince(start) * 1_000),
+            inputTokens: response.inputTokens,
+            outputTokens: response.outputTokens
         )
     }
 }
