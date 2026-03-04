@@ -1,0 +1,62 @@
+site_name: OpenScribe
+site_description: OpenScribe product docs and contributor guides
+site_url: https://streichsbaer.github.io/OpenScribe/
+repo_url: https://github.com/streichsbaer/OpenScribe
+repo_name: streichsbaer/OpenScribe
+edit_uri: edit/main/site-docs/
+
+docs_dir: site-docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  font:
+    text: IBM Plex Sans
+    code: JetBrains Mono
+  palette:
+    - scheme: default
+      primary: teal
+      accent: amber
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Product:
+    - Overview: product/index.md
+    - Product Spec: product/spec.md
+    - Roadmap: product/roadmap.md
+  - Guides:
+    - Getting Started: guides/getting-started.md
+    - Using OpenScribe: guides/using-openscribe.md
+    - Menu and Settings: guides/menu-and-settings.md
+    - Contributing Docs: guides/contributing-docs.md
+  - Operations:
+    - Issue Tracking: ops/issue-tracking.md
+    - Label Conventions: ops/label-conventions.md
+    - Testing: ops/testing.md
+    - Release: ops/release.md
+  - Reference:
+    - Storage Contract: reference/storage-contract.md
+    - Popover Contract: reference/popover-contract.md
+    - Governance: reference/governance.md
