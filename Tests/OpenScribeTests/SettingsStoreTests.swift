@@ -24,6 +24,19 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.settings.pasteHotkey, updatedPaste)
     }
 
+    func testPersistsPinnedMicrophone() throws {
+        let layout = try makeTempLayout()
+        let store = SettingsStore(layout: layout)
+        let pinned = PinnedMicrophone(id: "mic-usb-1", name: "USB Podcast Mic")
+
+        store.update {
+            $0.pinnedMicrophone = pinned
+        }
+
+        let reloaded = SettingsStore(layout: layout)
+        XCTAssertEqual(reloaded.settings.pinnedMicrophone, pinned)
+    }
+
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("OpenScribeSettingsTests-\(UUID().uuidString)", isDirectory: true)

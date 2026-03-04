@@ -306,6 +306,37 @@ struct SettingsView: View {
             }
 
             settingsCard("MICROPHONE") {
+                settingRow("System default") {
+                    Text(shell.systemDefaultMicrophoneName)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(width: providerPickerWidth, alignment: .trailing)
+                }
+
+                settingRow("Pinned default") {
+                    Picker("Pinned default", selection: pinnedMicrophoneSelection) {
+                        Text("System default (no pin)").tag("")
+                        if let pinned = shell.settings.pinnedMicrophone,
+                           !shell.isMicrophoneCurrentlyAvailable(pinned.id) {
+                            Text("Pinned unavailable: \(pinned.name)").tag(pinned.id)
+                        }
+                        ForEach(shell.availableMicrophones) { device in
+                            Text(device.name).tag(device.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: providerPickerWidth, alignment: .trailing)
+                }
+
+                if let pinned = shell.settings.pinnedMicrophone,
+                   !shell.isMicrophoneCurrentlyAvailable(pinned.id) {
+                    Text("Pinned microphone \"\(pinned.name)\" is currently unavailable.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+
                 Text(microphonePermissionSummary)
                     .font(.caption)
                     .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
@@ -934,6 +965,15 @@ struct SettingsView: View {
 
     private func polishModels(for provider: String) -> [String] {
         shell.availableModels(for: provider, usage: .polish)
+    }
+
+    private var pinnedMicrophoneSelection: Binding<String> {
+        Binding(
+            get: { shell.settings.pinnedMicrophone?.id ?? "" },
+            set: { newValue in
+                shell.setPinnedMicrophone(newValue.isEmpty ? nil : newValue)
+            }
+        )
     }
 
     private var microphonePermissionSummary: String {

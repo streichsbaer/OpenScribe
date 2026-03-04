@@ -140,6 +140,10 @@ final class AppShell: ObservableObject {
     @Published var menubarIconDebug: String = "icon=idle"
     @Published var transcribeElapsedSeconds: Int = 0
     @Published var polishElapsedSeconds: Int = 0
+    @Published private(set) var availableMicrophones: [MicrophoneDevice] = []
+    @Published private(set) var systemDefaultMicrophoneName: String = "Unknown input"
+    @Published private(set) var systemDefaultMicrophoneID: String?
+    @Published var sessionMicrophoneOverrideID: String?
     @Published private(set) var historySessions: [SessionHistoryEntry] = []
     @Published private(set) var historyHasMoreSessions: Bool = false
     @Published private(set) var historyIsLoading: Bool = false
@@ -168,6 +172,7 @@ final class AppShell: ObservableObject {
     private let sessionManager: SessionManager
     private let statsStore: StatsStore
     private let audioCapture: AudioCaptureManager
+    private let microphoneCatalog: MicrophoneDeviceCatalogProtocol
     private let hotkeyManager: HotkeyManager
     private let providerFactory: ProviderFactory
     private let transcriptionPipeline: TranscriptionPipeline
@@ -195,6 +200,7 @@ final class AppShell: ObservableObject {
         self.sessionManager = SessionManager(layout: resolvedLayout)
         self.statsStore = StatsStore(layout: resolvedLayout)
         self.audioCapture = AudioCaptureManager()
+        self.microphoneCatalog = MicrophoneDeviceCatalog()
         self.hotkeyManager = HotkeyManager()
 
         let factory = ProviderFactory(keychain: keychainStore, modelManager: modelManager)
@@ -206,6 +212,7 @@ final class AppShell: ObservableObject {
 
         self.rulesDraft = rulesStore.currentRules
         self.permissionState = audioCapture.permissionState()
+        applyMicrophoneSnapshot(microphoneCatalog.currentSnapshot())
 
         self.openAIKeyInput = keychainStore.load(.openAI) ?? ""
         self.groqKeyInput = keychainStore.load(.groq) ?? ""
@@ -215,6 +222,11 @@ final class AppShell: ObservableObject {
         audioCapture.onLevelUpdate = { [weak self] level in
             Task { @MainActor [weak self] in
                 self?.meterLevel = level
+            }
+        }
+        microphoneCatalog.onSnapshotChange = { [weak self] snapshot in
+            Task { @MainActor [weak self] in
+                self?.applyMicrophoneSnapshot(snapshot)
             }
         }
 
@@ -272,6 +284,42 @@ final class AppShell: ObservableObject {
         settingsStore.update(mutate)
         registerHotkeys()
         applyAppearanceMode()
+    }
+
+    func setSessionMicrophoneOverride(_ id: String?) {
+        if let id, !id.isEmpty {
+            sessionMicrophoneOverrideID = id
+        } else {
+            sessionMicrophoneOverrideID = nil
+        }
+    }
+
+    func setPinnedMicrophone(_ id: String?) {
+        let normalizedID = id?.isEmpty == true ? nil : id
+        let devicesByID = Dictionary(uniqueKeysWithValues: availableMicrophones.map { ($0.id, $0) })
+
+        updateSettings { settings in
+            guard let normalizedID else {
+                settings.pinnedMicrophone = nil
+                return
+            }
+
+            if let device = devicesByID[normalizedID] {
+                settings.pinnedMicrophone = PinnedMicrophone(id: device.id, name: device.name)
+                return
+            }
+
+            let retainedName = settings.pinnedMicrophone?.name ?? "Pinned microphone"
+            settings.pinnedMicrophone = PinnedMicrophone(id: normalizedID, name: retainedName)
+        }
+    }
+
+    func microphoneName(for id: String) -> String? {
+        availableMicrophones.first(where: { $0.id == id })?.name
+    }
+
+    func isMicrophoneCurrentlyAvailable(_ id: String) -> Bool {
+        availableMicrophones.contains(where: { $0.id == id })
     }
 
     func saveAPIKeys() {
@@ -399,6 +447,7 @@ final class AppShell: ObservableObject {
 
     func refreshPermissionState() {
         permissionState = audioCapture.permissionState()
+        applyMicrophoneSnapshot(microphoneCatalog.currentSnapshot())
         registerHotkeys()
     }
 
@@ -459,6 +508,13 @@ final class AppShell: ObservableObject {
             return
         }
 
+        let microphoneResolution = resolveMicrophoneForNextRecording()
+        guard microphoneResolution.source != .unavailable else {
+            lastError = microphoneResolution.statusMessage ?? "No microphone input is currently available."
+            statusMessage = microphoneResolution.statusMessage ?? "No microphone input is currently available."
+            return
+        }
+
         do {
             rawTranscript = ""
             polishedTranscript = ""
@@ -470,14 +526,22 @@ final class AppShell: ObservableObject {
 
             var session = try sessionManager.startSession(
                 settings: settings,
-                inputDeviceName: audioCapture.currentInputDeviceName
+                inputDeviceName: microphoneResolution.device?.name ?? systemDefaultMicrophoneName
             )
             try sessionManager.transition(&session, to: .recording, details: "Audio capture started")
-            try audioCapture.startRecording(to: session.paths.audioTempURL)
+            let inputDeviceID = MicrophoneCaptureRouting.inputDeviceIDForCapture(
+                resolution: microphoneResolution,
+                systemDefaultDeviceID: systemDefaultMicrophoneID
+            )
+            try audioCapture.startRecording(
+                to: session.paths.audioTempURL,
+                inputDeviceID: inputDeviceID
+            )
             currentSession = session
+            sessionMicrophoneOverrideID = nil
 
             sessionState = .recording
-            statusMessage = "Recording"
+            statusMessage = microphoneResolution.statusMessage ?? "Recording"
         } catch {
             lastError = error.localizedDescription
             statusMessage = "Failed to start recording"
@@ -492,6 +556,29 @@ final class AppShell: ObservableObject {
         case .recording, .finalizingAudio, .transcribing, .polishing:
             return false
         }
+    }
+
+    private func applyMicrophoneSnapshot(_ snapshot: MicrophoneDeviceSnapshot) {
+        availableMicrophones = snapshot.devices
+        systemDefaultMicrophoneID = snapshot.systemDefaultDeviceID
+        systemDefaultMicrophoneName = snapshot.systemDefaultDeviceName
+            ?? snapshot.devices.first?.name
+            ?? "Unknown input"
+
+        if let sessionMicrophoneOverrideID,
+           !snapshot.devices.contains(where: { $0.id == sessionMicrophoneOverrideID }) {
+            self.sessionMicrophoneOverrideID = nil
+        }
+    }
+
+    private func resolveMicrophoneForNextRecording() -> MicrophoneResolutionResult {
+        let snapshot = microphoneCatalog.currentSnapshot()
+        applyMicrophoneSnapshot(snapshot)
+        return MicrophoneSelectionResolver.resolve(
+            snapshot: snapshot,
+            pinnedMicrophone: settings.pinnedMicrophone,
+            sessionOverrideID: sessionMicrophoneOverrideID
+        )
     }
 
     func stopRecordingAndProcess() async {

@@ -1,4 +1,3 @@
-import AVFoundation
 import Foundation
 import SwiftUI
 
@@ -136,7 +135,26 @@ struct PopoverView: View {
     private var inputSection: some View {
         card(title: "Input") {
             VStack(alignment: .leading, spacing: 8) {
-                keyValueRow("Device", shell.currentSession?.metadata.inputDeviceName ?? AVAudioSessionBridge.defaultInputName)
+                keyValueRow("Device", shell.currentSession?.metadata.inputDeviceName ?? shell.systemDefaultMicrophoneName)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Next recording input")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Next recording input", selection: sessionMicrophoneSelection) {
+                        Text("Automatic").tag("")
+                        ForEach(shell.availableMicrophones) { device in
+                            Text(device.name).tag(device.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                }
+
+                Text(sessionMicrophoneHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Level")
@@ -986,6 +1004,31 @@ struct PopoverView: View {
         }
     }
 
+    private var sessionMicrophoneSelection: Binding<String> {
+        Binding(
+            get: { shell.sessionMicrophoneOverrideID ?? "" },
+            set: { nextID in
+                shell.setSessionMicrophoneOverride(nextID.isEmpty ? nil : nextID)
+            }
+        )
+    }
+
+    private var sessionMicrophoneHint: String {
+        if let selectedID = shell.sessionMicrophoneOverrideID,
+           let selectedName = shell.microphoneName(for: selectedID) {
+            if let pinned = shell.settings.pinnedMicrophone {
+                return "Session selection \"\(selectedName)\" will be used next. Pinned default \"\(pinned.name)\" applies when no session selection is set."
+            }
+            return "Session selection \"\(selectedName)\" is queued for the next recording start."
+        }
+
+        if let pinned = shell.settings.pinnedMicrophone {
+            return "Pinned default \"\(pinned.name)\" will be used when no session selection is set."
+        }
+
+        return "No session override selected. The system default microphone will be used."
+    }
+
     private func openSettings() {
         shell.openSettingsWindow()
     }
@@ -1703,11 +1746,5 @@ private struct InstantHintModifier: ViewModifier {
 private extension View {
     func instantHint(_ text: String, hoverHint: Binding<String?>) -> some View {
         modifier(InstantHintModifier(text: text, hoverHint: hoverHint))
-    }
-}
-
-enum AVAudioSessionBridge {
-    static var defaultInputName: String {
-        AVCaptureDevice.default(for: .audio)?.localizedName ?? "Unknown input"
     }
 }

@@ -141,6 +141,11 @@ struct HotkeySetting: Codable, Equatable, Hashable {
     }
 }
 
+struct PinnedMicrophone: Codable, Equatable {
+    var id: String
+    var name: String
+}
+
 struct AppSettings: Codable, Equatable {
     var transcriptionProviderID: String
     var transcriptionModel: String
@@ -156,6 +161,7 @@ struct AppSettings: Codable, Equatable {
     var pasteHotkey: HotkeySetting
     var togglePopoverHotkey: HotkeySetting
     var openSettingsHotkey: HotkeySetting
+    var pinnedMicrophone: PinnedMicrophone?
 
     static let `default` = AppSettings(
         transcriptionProviderID: "whispercpp",
@@ -171,7 +177,8 @@ struct AppSettings: Codable, Equatable {
         copyRawHotkey: .copyRawDefault,
         pasteHotkey: .pasteDefault,
         togglePopoverHotkey: .togglePopoverDefault,
-        openSettingsHotkey: .openSettingsDefault
+        openSettingsHotkey: .openSettingsDefault,
+        pinnedMicrophone: nil
     )
 }
 
