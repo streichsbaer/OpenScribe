@@ -1,0 +1,87 @@
+name: Work Request
+about: Propose a feature, improvement, or docs change with acceptance criteria.
+title: "[Work]: "
+labels:
+  - type/feature
+  - status/planned
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for feature or improvement requests.
+        Open a work issue instead of a pull request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What user or maintainer problem should be solved?
+      placeholder: Describe the current gap and why it matters.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Outcome
+      description: What should exist after this work is complete?
+      placeholder: Describe the desired behavior or result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: List concrete criteria that can be verified.
+      placeholder: |
+        - Criterion 1
+        - Criterion 2
+        - Criterion 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Work Area
+      description: Select the primary area for triage and labeling.
+      options:
+        - ui
+        - providers
+        - history
+        - stats
+        - docs
+        - release
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: Optional Implementation Notes
+      description: Technical hints, references, or architecture guidance.
+      placeholder: Add optional details for implementation.
+
+  - type: input
+    id: agent_session_link
+    attributes:
+      label: Optional Coding-Agent Session Link
+      description: Link to a coding-agent run that produced candidate code.
+      placeholder: https://...
+
+  - type: input
+    id: fork_branch_link
+    attributes:
+      label: Optional Fork Branch Link
+      description: Link to a fork branch containing candidate code.
+      placeholder: https://github.com/<user>/<repo>/tree/<branch>
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I am opening an issue for implementation review instead of an unsolicited pull request.
+          required: true

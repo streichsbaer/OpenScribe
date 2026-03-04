@@ -1,5 +1,12 @@
 # OpenScribe Agent Rules
 
+## SOUL
+
+- Load `SOUL.md` at the start of work.
+- Always read `SOUL.md` before planning or editing code in each new session.
+- Treat `SOUL.md` as the product and engineering voice for this repository.
+- Use `SOUL.md` to guide priorities, privacy stance, and communication tone.
+
 ## Build Policy
 
 - Implement the current behavior directly.
@@ -11,12 +18,50 @@
 - Do not use em dashes.
 - Do not use contrastive negation phrasing such as "it is not X, it is Y."
 
-## SOUL
+## Documentation Boundaries
 
-- Load `SOUL.md` at the start of work.
-- Always read `SOUL.md` before planning or editing code in each new session.
-- Treat `SOUL.md` as the product and engineering voice for this repository.
-- Use `SOUL.md` to guide priorities, privacy stance, and communication tone.
+- `SOUL.md` captures enduring product values, priorities, and quality intent.
+- `AGENTS.md` captures repository workflow, execution rules, and collaboration protocol.
+- `site-docs/product/spec.md` and `site-docs/product/roadmap.md` are canonical product docs.
+- `site-docs/ops/` contains operational runbooks for testing, releases, and issue tracking.
+- Update the canonical location first and replace duplicate content with links.
+
+## CI Security and Review Hygiene
+
+- Pin third-party GitHub Actions to immutable full commit SHAs.
+- Pin externally downloaded CI dependencies to explicit versions.
+- Use least-privilege workflow permissions and scope write or OIDC permissions to the smallest set of jobs.
+- For public repositories, avoid running privileged jobs for fork pull requests.
+- Triage external review findings before merge and either fix them or document rationale for deferral.
+
+## Product Specs Source of Truth
+
+- Use `site-docs/product/spec.md` as the canonical product spec.
+- Use `site-docs/product/roadmap.md` as the canonical roadmap summary.
+- When asked what is next, start from `site-docs/product/roadmap.md`.
+- Follow links from product docs into deeper pages under `site-docs/`.
+
+## Issue and Feature Tracking
+
+- Use GitHub Issues as the live tracker for features, bugs, and docs work.
+- Follow `site-docs/ops/issue-tracking.md` for tracking workflow and saved query links.
+- Follow `site-docs/ops/label-conventions.md` for label taxonomy.
+- New issues should include one `type/*`, one `status/*`, and one `area/*` label.
+- Keep product docs aligned with issue status when behavior changes.
+- When work is completed, set `status/done` and close the related issue.
+- Use issue-first external collaboration. Redirect unsolicited external pull requests to issues.
+
+## Change Approval
+
+- Stefan is the final approver for changes to `SOUL.md`, `AGENTS.md`, `site-docs/product/spec.md`, and `site-docs/product/roadmap.md`.
+- I can draft and apply updates when Stefan requests them directly.
+- If I identify a governance improvement outside a direct request, I propose it first, then wait for approval before editing.
+- Product direction changes require explicit approval before implementation.
+
+## Release Verification
+
+- Follow `site-docs/ops/testing.md` and `site-docs/ops/release.md` for release validation steps.
+- Keep release checklists in `site-docs/ops/` and avoid duplicating them in `SOUL.md`.
 
 ## Local Skills
 
@@ -59,9 +104,10 @@
 - Rewrite contractions: use `do not`, `it is`, `You have`.
 - Keep each bullet to one concise sentence.
 
-- Default pattern for multiline commit messages:
+- Canonical commit flow template:
 
 ```bash
+git add path/to/file.swift
 zsh -lic "git commit -F - <<'EOF'
 feat: short subject
 
@@ -74,34 +120,16 @@ What
 Instruction
 - User request summary without apostrophes.
 EOF"
+git log -1 --pretty=medium
 ```
 
 - This pattern is required because a single-quoted `zsh -lic '...'` payload can break.
 - If a commit command fails to parse, stop and rewrite the message with zero apostrophes before retry.
 
-### Commit Message Examples
-
-```bash
-git add path/to/file.swift
-zsh -lic "git commit -F - <<'EOF'
-fix: improve status chip contrast
-
-Why
-- Polishing state color blended into some menu bar themes.
-
-What
-- Changed polishing chip/icon color to mint.
-
-Instruction
-- User asked for a neutral polishing color.
-EOF"
-git log -1 --pretty=medium
-```
-
 ## Commit Cadence
 
 - Create one commit for each completed behavior change after local verification.
-- Create one commit for each focused bug fix.
+- Create one commit for each focused and verified bug fix.
 - Group related documentation or governance updates into one docs commit.
 - Do not wait for large batches when a scoped, verified unit is complete.
-- If work is exploratory and unverified, hold commits until the change is validated.
+- If work is exploratory and unverified, hold commits until the change is validated and approved by Stefan.
