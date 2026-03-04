@@ -67,6 +67,7 @@
 
 - For app behavior changes or test requests, load `site-docs/ops/testing.md` before running checks.
 - For docs content, docs styling, docs workflow, or GitHub Pages verification, load `site-docs/ops/docs-verification.md` and `.agents/skills/docs-visual-review/SKILL.md`.
+- For Cloudflare DNS, edge security headers, HTTPS settings, or domain routing tasks, load `site-docs/ops/cloudflare.md` before making changes.
 - For post-push docs verification, run `$docs-visual-review --remote-url https://openscribe.dev/ --out artifacts/docs-visual/remote-latest` and report `report.md` plus screenshot paths.
 - For docs visual checks, inspect generated screenshots directly with the image tool. Do not run auxiliary image processing commands unless Stefan explicitly requests deeper analysis.
 - For release tasks, load `site-docs/ops/release.md` and `site-docs/ops/testing.md`.
