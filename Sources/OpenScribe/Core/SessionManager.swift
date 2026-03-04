@@ -52,6 +52,7 @@ final class SessionManager {
             polishProvider: settings.polishProviderID,
             polishModel: settings.polishModel,
             languageMode: settings.languageMode,
+            audioActivity: nil,
             state: .recording,
             stateTransitions: [],
             lastError: nil,

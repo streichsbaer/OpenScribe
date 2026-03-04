@@ -14,10 +14,12 @@ Roadmap execution lives in GitHub Issues and is summarized in [Roadmap](roadmap.
 1. Global hotkey toggles recording.
 2. Audio is captured to `audio.capture.wav.part`.
 3. On stop, audio is finalized atomically to `audio.m4a`.
-4. STT runs via selected provider.
-5. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
-6. If polish is disabled, polished output is passthrough from raw transcript.
-7. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
+4. Audio activity guard validates speech signal before provider calls.
+5. Empty or near-empty recordings skip STT and polish, store empty transcript outputs, and end with a `No audio captured` status.
+6. STT runs via selected provider when speech signal is usable.
+7. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
+8. If polish is disabled, polished output is passthrough from raw transcript.
+9. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
 
 ## Defaults
 

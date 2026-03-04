@@ -67,6 +67,7 @@ struct SessionMetadata: Codable {
     var polishProvider: String
     var polishModel: String
     var languageMode: String
+    var audioActivity: AudioActivityAssessment?
     var state: SessionState
     var stateTransitions: [SessionStateTransition]
     var lastError: String?

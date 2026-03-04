@@ -11,6 +11,7 @@ final class AudioCaptureManager {
     private let engine = AVAudioEngine()
     private var wavWriter: WavFileWriter?
     private var converter: AVAudioConverter?
+    private var activityAnalyzer: AudioActivityAnalyzer?
 
     var onLevelUpdate: ((Float) -> Void)?
 
@@ -54,6 +55,7 @@ final class AudioCaptureManager {
             sampleRate: Int(targetFormat.sampleRate),
             channels: Int(targetFormat.channelCount)
         )
+        activityAnalyzer = AudioActivityAnalyzer()
 
         inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
@@ -64,19 +66,27 @@ final class AudioCaptureManager {
         try engine.start()
     }
 
-    func stopRecording() {
+    func stopRecording() -> AudioActivityAssessment {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
 
         try? wavWriter?.close()
         wavWriter = nil
         converter = nil
+        let assessment = activityAnalyzer?.assess() ?? .noData
+        activityAnalyzer = nil
 
         onLevelUpdate?(0)
+        return assessment
     }
 
     private func handle(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, outputFormat: AVAudioFormat) {
         let level = rmsLevel(from: buffer, inputFormat: inputFormat)
+        activityAnalyzer?.ingest(
+            rmsLevel: level,
+            frameCount: Int(buffer.frameLength),
+            sampleRate: inputFormat.sampleRate
+        )
         onLevelUpdate?(level)
 
         guard let converter = converter,

@@ -503,9 +503,16 @@ final class AppShell: ObservableObject {
             sessionState = .finalizingAudio
             try sessionManager.transition(&session, to: .finalizingAudio, details: "Stopping audio capture")
 
-            audioCapture.stopRecording()
+            let audioActivity = audioCapture.stopRecording()
             try sessionManager.finalizeAudioFile(&session)
             try sessionManager.stopSession(&session)
+            session.metadata.audioActivity = audioActivity
+
+            if !audioActivity.hasUsableSpeech {
+                try completeWithoutUsableAudio(session: &session, reason: audioActivity.reason)
+                currentSession = session
+                return
+            }
 
             try await ensureLocalModelInstalledIfNeeded(using: settings)
             sessionState = .transcribing
@@ -656,6 +663,17 @@ final class AppShell: ObservableObject {
 
             guard FileManager.default.fileExists(atPath: session.paths.audioURL.path) else {
                 self.statusMessage = "No recorded audio available for re-transcription."
+                return
+            }
+
+            if let audioActivity = session.metadata.audioActivity, !audioActivity.hasUsableSpeech {
+                self.rawTranscript = ""
+                self.polishedTranscript = ""
+                self.rawTranscriptProviderID = ""
+                self.rawTranscriptModel = ""
+                self.polishedTranscriptProviderID = ""
+                self.polishedTranscriptModel = ""
+                self.statusMessage = "No audio captured. Speak clearly and try again."
                 return
             }
 
@@ -1479,6 +1497,24 @@ final class AppShell: ObservableObject {
 
         statusMessage = "Downloading local model \(modelID)..."
         _ = try await modelManager.ensureInstalled(modelID: modelID)
+    }
+
+    private func completeWithoutUsableAudio(
+        session: inout SessionContext,
+        reason: String
+    ) throws {
+        rawTranscript = ""
+        polishedTranscript = ""
+        rawTranscriptProviderID = ""
+        rawTranscriptModel = ""
+        polishedTranscriptProviderID = ""
+        polishedTranscriptModel = ""
+        try sessionManager.writeRaw("", for: &session)
+        try sessionManager.writePolished("", for: &session)
+        try sessionManager.transition(&session, to: .completed, details: "No usable speech detected: \(reason)")
+        sessionState = .completed
+        statusMessage = "No audio captured. Speak clearly and try again."
+        lastError = nil
     }
 
     private func completeWithoutPolish(
