@@ -73,7 +73,7 @@ Expected environment variable in agent sessions:
 GitHub Pages state:
 
 ```bash
-gh api repos/streichsbaer/OpenScribe/pages
+gh api repos/streichsbaer/openscribe/pages
 ```
 
 Cloudflare zone and settings:
@@ -108,14 +108,14 @@ Public behavior and header checks:
 curl -I https://openscribe.dev/
 curl -I https://openscribe.dev/product/spec/
 curl -I https://www.openscribe.dev/
-curl -I https://streichsbaer.github.io/OpenScribe/
+curl -I https://streichsbaer.github.io/openscribe/
 ```
 
 Pass criteria:
 
 - `openscribe.dev` routes return `HTTP 200`.
 - `www.openscribe.dev` returns `HTTP 301` to apex.
-- `streichsbaer.github.io/OpenScribe` returns `HTTP 301` to apex.
+- `streichsbaer.github.io/openscribe` returns `HTTP 301` to apex.
 - Security headers are present in apex responses.
 
 Visual and console verification:

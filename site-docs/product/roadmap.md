@@ -8,10 +8,10 @@ This is the canonical roadmap summary for OpenScribe.
 
 Roadmap execution is tracked in GitHub Issues.
 
-- [Open features](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Atype%2Ffeature)
-- [Planned](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Astatus%2Fplanned)
-- [In progress](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Astatus%2Fin-progress)
-- [Done](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aclosed+label%3Astatus%2Fdone)
+- [Open features](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Atype%2Ffeature)
+- [Planned](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Astatus%2Fplanned)
+- [In progress](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Astatus%2Fin-progress)
+- [Done](https://github.com/streichsbaer/openscribe/issues?q=is%3Aclosed+label%3Astatus%2Fdone)
 - Tracking model details: [Issue Tracking](../ops/issue-tracking.md)
 
 ## Status snapshot

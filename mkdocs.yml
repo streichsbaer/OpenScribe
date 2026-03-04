@@ -1,8 +1,8 @@
 site_name: OpenScribe
 site_description: OpenScribe product docs and contributor guides
 site_url: https://openscribe.dev/
-repo_url: https://github.com/streichsbaer/OpenScribe
-repo_name: streichsbaer/OpenScribe
+repo_url: https://github.com/streichsbaer/openscribe
+repo_name: streichsbaer/openscribe
 edit_uri: edit/main/site-docs/
 
 docs_dir: site-docs

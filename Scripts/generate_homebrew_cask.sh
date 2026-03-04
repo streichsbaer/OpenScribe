@@ -31,10 +31,10 @@ CASK_CONTENT="cask \"openscribe\" do
   version \"$VERSION\"
   sha256 \"$SHA256\"
 
-  url \"https://github.com/streichsbaer/OpenScribe/releases/download/$TAG/OpenScribe-#{version}.zip\"
+  url \"https://github.com/streichsbaer/openscribe/releases/download/$TAG/OpenScribe-#{version}.zip\"
   name \"OpenScribe\"
   desc \"Native macOS menubar dictation app\"
-  homepage \"https://github.com/streichsbaer/OpenScribe\"
+  homepage \"https://github.com/streichsbaer/openscribe\"
 
   app \"OpenScribe.app\"
 end"

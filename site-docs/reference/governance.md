@@ -36,7 +36,7 @@ Tracking details:
 
 ## Canonical governance files
 
-- [AGENTS.md](https://github.com/streichsbaer/OpenScribe/blob/main/AGENTS.md)
-- [SOUL.md](https://github.com/streichsbaer/OpenScribe/blob/main/SOUL.md)
+- [AGENTS.md](https://github.com/streichsbaer/openscribe/blob/main/AGENTS.md)
+- [SOUL.md](https://github.com/streichsbaer/openscribe/blob/main/SOUL.md)
 
 These files stay versioned in the repository and are part of the collaboration contract.

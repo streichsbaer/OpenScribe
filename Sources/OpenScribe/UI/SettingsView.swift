@@ -94,9 +94,9 @@ struct SettingsView: View {
     ]
     private let authorGitHubURL = URL(string: "https://github.com/streichsbaer")!
     private let authorXURL = URL(string: "https://x.com/s_streichsbier")!
-    private let repositoryURL = URL(string: "https://github.com/streichsbaer/OpenScribe")!
-    private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/OpenScribe/blob/main/SOUL.md")!
-    private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/OpenScribe/blob/main/AGENTS.md")!
+    private let repositoryURL = URL(string: "https://github.com/streichsbaer/openscribe")!
+    private let soulGitHubURL = URL(string: "https://github.com/streichsbaer/openscribe/blob/main/SOUL.md")!
+    private let agentsGitHubURL = URL(string: "https://github.com/streichsbaer/openscribe/blob/main/AGENTS.md")!
 
     init(onPreferredSizeChange: ((CGSize, Bool) -> Void)? = nil) {
         self.onPreferredSizeChange = onPreferredSizeChange

@@ -25,4 +25,4 @@ Smoke runs validate click and hotkey parity with specific screenshot artifacts.
 
 ## Deep details
 
-- Repository spec: [`docs/popover-spec.md`](https://github.com/streichsbaer/OpenScribe/blob/main/docs/popover-spec.md)
+- Repository spec: [`docs/popover-spec.md`](https://github.com/streichsbaer/openscribe/blob/main/docs/popover-spec.md)

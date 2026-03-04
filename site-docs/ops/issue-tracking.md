@@ -20,11 +20,11 @@ Scribe can read, create, and update issues through GitHub CLI automation.
 
 ## Live roadmap views
 
-- [Open features](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Atype%2Ffeature)
-- [Planned](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Astatus%2Fplanned)
-- [In progress](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Astatus%2Fin-progress)
-- [Done](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aclosed+label%3Astatus%2Fdone)
-- [Docs work](https://github.com/streichsbaer/OpenScribe/issues?q=is%3Aopen+label%3Aarea%2Fdocs)
+- [Open features](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Atype%2Ffeature)
+- [Planned](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Astatus%2Fplanned)
+- [In progress](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Astatus%2Fin-progress)
+- [Done](https://github.com/streichsbaer/openscribe/issues?q=is%3Aclosed+label%3Astatus%2Fdone)
+- [Docs work](https://github.com/streichsbaer/openscribe/issues?q=is%3Aopen+label%3Aarea%2Fdocs)
 
 ## Keep docs and issues aligned
 

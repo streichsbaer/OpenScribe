@@ -7,7 +7,7 @@ OpenScribe is a native macOS menu bar dictation app for fast speech-to-text with
 - Docs site: <https://openscribe.dev/>
 - Product spec: <https://openscribe.dev/product/spec/>
 - Roadmap: <https://openscribe.dev/product/roadmap/>
-- Open issues: <https://github.com/streichsbaer/OpenScribe/issues>
+- Open issues: <https://github.com/streichsbaer/openscribe/issues>
 
 ## Quick Start
 
