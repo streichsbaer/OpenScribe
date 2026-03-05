@@ -1,17 +1,178 @@
+/* ============================================================
+   OpenScribe — Refined Precision palette
+   Deep charcoal + warm amber identity
+   ============================================================ */
+
 :root {
-  --scribe-text: #1f2937;
+  /* Brand palette */
+  --scribe-ink: #1a1f2e;
+  --scribe-ink-soft: #2d3348;
+  --scribe-text: #334155;
   --scribe-heading: #0f172a;
-  --scribe-link: #0f766e;
-  --scribe-link-hover: #115e59;
-  --scribe-surface: #ffffff;
-  --scribe-surface-border: #dbe4ea;
-  --scribe-nav-active-bg: #e6f4f2;
-  --scribe-nav-active-text: #0b5f57;
+  --scribe-muted: #64748b;
+  --scribe-amber: #d97706;
+  --scribe-amber-hover: #b45309;
+  --scribe-amber-light: #fef3c7;
+  --scribe-surface: #fafaf9;
+  --scribe-surface-card: #ffffff;
+  --scribe-surface-border: #e2e8f0;
+  --scribe-nav-active-bg: #fef3c7;
+  --scribe-nav-active-text: #92400e;
+
+  /* Material overrides */
+  --md-primary-fg-color: var(--scribe-ink);
+  --md-primary-fg-color--light: var(--scribe-ink-soft);
+  --md-primary-fg-color--dark: #111527;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: #ffffffb3;
+  --md-accent-fg-color: var(--scribe-amber);
+  --md-accent-fg-color--transparent: #d9770619;
+  --md-accent-bg-color: var(--scribe-amber-light);
 }
 
-.md-main__inner {
-  margin-top: 1.2rem;
+/* ============================================================
+   Dark mode (slate scheme)
+   ============================================================ */
+
+[data-md-color-scheme="slate"] {
+  /* Flip the palette for dark backgrounds */
+  --scribe-ink: #111827;
+  --scribe-ink-soft: #1e293b;
+  --scribe-text: #cbd5e1;
+  --scribe-heading: #f1f5f9;
+  --scribe-muted: #94a3b8;
+  --scribe-amber: #f59e0b;
+  --scribe-amber-hover: #fbbf24;
+  --scribe-amber-light: rgba(245, 158, 11, 0.12);
+  --scribe-surface: #0f172a;
+  --scribe-surface-card: #1e293b;
+  --scribe-surface-border: #334155;
+  --scribe-nav-active-bg: rgba(245, 158, 11, 0.10);
+  --scribe-nav-active-text: #fbbf24;
+
+  /* Material slate overrides */
+  --md-default-bg-color: var(--scribe-surface);
+  --md-default-fg-color: var(--scribe-text);
+  --md-primary-fg-color: var(--scribe-ink);
+  --md-primary-fg-color--light: var(--scribe-ink-soft);
+  --md-primary-fg-color--dark: #0b1120;
+  --md-primary-bg-color: #f1f5f9;
+  --md-primary-bg-color--light: #f1f5f9b3;
+  --md-accent-fg-color: var(--scribe-amber);
+  --md-accent-fg-color--transparent: #f59e0b19;
+  --md-accent-bg-color: var(--scribe-amber-light);
+  --md-typeset-color: var(--scribe-text);
+  --md-typeset-a-color: var(--scribe-amber);
 }
+
+/* Header stays dark charcoal in both modes */
+[data-md-color-scheme="slate"] .md-header {
+  background: #0b1120;
+}
+
+[data-md-color-scheme="slate"] .md-tabs {
+  background: #0b1120;
+}
+
+[data-md-color-scheme="slate"] .md-footer {
+  background: #0b1120;
+}
+
+/* Content card in dark mode */
+[data-md-color-scheme="slate"] .md-content {
+  background: var(--scribe-surface-card);
+  border-color: var(--scribe-surface-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Secondary button in dark mode */
+[data-md-color-scheme="slate"] .hero-actions .btn-secondary {
+  background: var(--scribe-surface-card);
+  color: var(--scribe-heading);
+  border-color: var(--scribe-surface-border) !important;
+}
+
+[data-md-color-scheme="slate"] .hero-actions .btn-secondary:hover {
+  background: #334155;
+  color: var(--scribe-heading);
+}
+
+/* Carousel track: no container chrome needed, screenshots have their own window frame */
+
+/* Path cards in dark mode */
+[data-md-color-scheme="slate"] .path-card {
+  background: var(--scribe-surface-card);
+}
+
+/* Search bar in dark mode */
+[data-md-color-scheme="slate"] .md-search__form {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Global background ---- */
+
+body {
+  background: var(--scribe-surface);
+}
+
+.md-main {
+  background: var(--scribe-surface);
+}
+
+/* ---- Top bar & tabs ---- */
+
+.md-header {
+  background: var(--scribe-ink);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.md-tabs {
+  background: var(--scribe-ink);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Bold the site name in the header to match page-title weight */
+.md-header__topic[data-md-component="header-topic"] {
+  font-weight: 700;
+}
+
+/* Tweak 1: larger, bolder tab links for faster scanning */
+.md-tabs__link {
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.82;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: var(--scribe-amber) !important;
+  opacity: 1;
+}
+
+/* ---- Layout ---- */
+
+.md-main__inner {
+  margin-top: 1.4rem;
+}
+
+/* ---- Content card ---- */
+
+.md-content {
+  background: var(--scribe-surface-card);
+  border: 1px solid var(--scribe-surface-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04),
+    0 8px 20px rgba(15, 23, 42, 0.03);
+  padding: 0.65rem 0.95rem;
+}
+
+.md-content__inner {
+  border-radius: 12px;
+}
+
+/* ---- Typography ---- */
 
 .md-typeset,
 .md-typeset p,
@@ -27,30 +188,32 @@
 }
 
 .md-typeset h1 {
+  letter-spacing: -0.02em;
+  font-weight: 650;
+}
+
+.md-typeset h2 {
   letter-spacing: -0.01em;
 }
 
-.md-content__inner {
-  border-radius: 14px;
-}
-
-.md-content {
-  background: var(--scribe-surface);
-  border: 1px solid var(--scribe-surface-border);
-  border-radius: 14px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-  padding: 0.65rem 0.95rem;
-}
+/* ---- Links ---- */
 
 .md-typeset a {
-  color: var(--scribe-link);
+  color: var(--scribe-amber);
   font-weight: 560;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .md-typeset a:hover {
-  color: var(--scribe-link-hover);
+  color: var(--scribe-amber-hover);
+  border-bottom-color: var(--scribe-amber-hover);
 }
 
+/* ---- Sidebar nav ---- */
+
+/* Tweak 3: stronger active state with left accent bar */
 .md-nav__link--active {
   color: var(--scribe-nav-active-text) !important;
   font-weight: 640;
@@ -58,12 +221,377 @@
 
 .md-sidebar .md-nav__link--active {
   background: var(--scribe-nav-active-bg);
-  border-radius: 7px;
-  padding: 0.16rem 0.38rem;
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem 0.2rem 0.55rem;
+  border-left: 3px solid var(--scribe-amber);
 }
+
+/* ---- Menu icon sizing ---- */
 
 .md-typeset img.menu-icon {
   width: 56px;
   max-width: 56px;
   height: auto;
+}
+
+/* ============================================================
+   Hero section — landing page only
+   ============================================================ */
+
+.hero {
+  text-align: center;
+  padding: 2.4rem 1rem 1.6rem;
+}
+
+.hero-tagline {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--scribe-heading);
+  margin: 0 auto 0.6rem;
+  max-width: 620px;
+}
+
+.hero-sub {
+  font-size: 1.15rem;
+  color: var(--scribe-muted);
+  line-height: 1.55;
+  margin: 0 auto 1.8rem;
+  max-width: 520px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.hero-actions a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  border: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.hero-actions a:hover {
+  transform: translateY(-1px);
+  border: none;
+}
+
+.hero-actions .btn-primary {
+  background: var(--scribe-amber);
+  color: #ffffff;
+}
+
+.hero-actions .btn-primary:hover {
+  background: var(--scribe-amber-hover);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);
+}
+
+.hero-actions .btn-secondary {
+  background: var(--scribe-surface);
+  color: var(--scribe-heading);
+  border: 1px solid var(--scribe-surface-border) !important;
+}
+
+.hero-actions .btn-secondary:hover {
+  background: #f1f5f9;
+  color: var(--scribe-heading);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+/* ---- Product screenshot carousel ---- */
+
+/*
+ * Pure CSS crossfade carousel for 3 slides.
+ * Total cycle: 15s (5s per slide: 3.5s hold + 1.5s fade).
+ * Each slide is absolutely positioned and fades via opacity.
+ * Captions sit below the image area using the label element.
+ */
+
+.hero-carousel {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto 1rem;
+}
+
+/* Reserve vertical space so layout does not jump.
+   Aspect ratio matches popover screenshots (~9:10). */
+.hero-carousel-track {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 10;
+  overflow: hidden;
+}
+
+.hero-carousel-track img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  opacity: 0;
+  animation: carousel-fade 15s infinite;
+}
+
+/* Stagger each slide by 5s (15s / 3 slides) */
+.hero-carousel-track img:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.hero-carousel-track img:nth-child(2) {
+  animation-delay: 5s;
+}
+
+.hero-carousel-track img:nth-child(3) {
+  animation-delay: 10s;
+}
+
+@keyframes carousel-fade {
+  0% {
+    opacity: 0;
+  }
+
+  3% {
+    opacity: 1;
+  }
+
+  33.33% {
+    opacity: 1;
+  }
+
+  36.33% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Caption area below the carousel */
+.hero-carousel-captions {
+  position: relative;
+  height: 1.6rem;
+  margin-top: 0.7rem;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-carousel-captions span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--scribe-muted);
+  letter-spacing: 0.01em;
+  opacity: 0;
+  animation: carousel-fade 15s infinite;
+}
+
+.hero-carousel-captions span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.hero-carousel-captions span:nth-child(2) {
+  animation-delay: 5s;
+}
+
+.hero-carousel-captions span:nth-child(3) {
+  animation-delay: 10s;
+}
+
+/* Dot indicators */
+.hero-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.hero-carousel-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--scribe-surface-border);
+  animation: carousel-dot 15s infinite;
+}
+
+.hero-carousel-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.hero-carousel-dots span:nth-child(2) {
+  animation-delay: 5s;
+}
+
+.hero-carousel-dots span:nth-child(3) {
+  animation-delay: 10s;
+}
+
+@keyframes carousel-dot {
+  0% {
+    background: var(--scribe-surface-border);
+  }
+
+  3% {
+    background: var(--scribe-amber);
+  }
+
+  33.33% {
+    background: var(--scribe-amber);
+  }
+
+  36.33% {
+    background: var(--scribe-surface-border);
+  }
+
+  100% {
+    background: var(--scribe-surface-border);
+  }
+}
+
+/* Legacy single-image fallback class (kept for other pages) */
+.hero-screenshot {
+  max-width: 380px;
+  margin: 0 auto 1rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.10),
+    0 1px 4px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--scribe-surface-border);
+}
+
+/* ---- Value pillars grid ---- */
+
+/* Tweak 2: borderless pillars, use spacing and typography for separation */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.pillar {
+  padding: 1rem 0.5rem;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-top: 2px solid var(--scribe-amber);
+}
+
+.pillar h3 {
+  font-size: 1rem;
+  font-weight: 640;
+  margin: 0 0 0.35rem;
+  color: var(--scribe-heading);
+}
+
+.pillar p {
+  font-size: 0.88rem;
+  color: var(--scribe-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---- Bottom links section ---- */
+
+/* Tweak 2: lighter path cards, no border, subtle background only */
+.paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.path-card {
+  padding: 1.1rem 1.2rem;
+  border-radius: 10px;
+  background: var(--scribe-surface);
+  border: none;
+}
+
+.path-card h3 {
+  font-size: 0.95rem;
+  font-weight: 640;
+  margin: 0 0 0.5rem;
+  color: var(--scribe-heading);
+}
+
+.path-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+}
+
+.path-card li {
+  margin-bottom: 0.2rem;
+}
+
+/* ============================================================
+   Tweak 4: Mobile refinements (375px target)
+   ============================================================ */
+
+@media (max-width: 600px) {
+  .pillars {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .pillar {
+    padding: 0.9rem 0.2rem;
+    border-top-width: 1px;
+  }
+
+  .paths {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 1.6rem 0.5rem 1rem;
+  }
+
+  .hero-tagline {
+    font-size: 1.55rem;
+  }
+
+  .hero-sub {
+    font-size: 1rem;
+    margin-bottom: 1.3rem;
+  }
+
+  .hero-actions a {
+    padding: 0.7rem 1.6rem;
+    font-size: 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-screenshot {
+    max-width: 100%;
+  }
+
+  .hero-carousel {
+    max-width: 92%;
+  }
+}
+
+/* ---- Footer ---- */
+
+.md-footer {
+  background: var(--scribe-ink);
 }

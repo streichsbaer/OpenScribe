@@ -1,5 +1,5 @@
 site_name: OpenScribe
-site_description: OpenScribe product docs and contributor guides
+site_description: Fast, local speech-to-text for macOS
 site_url: https://openscribe.dev/
 repo_url: https://github.com/streichsbaer/openscribe
 repo_name: streichsbaer/openscribe
@@ -14,10 +14,21 @@ theme:
   font:
     text: IBM Plex Sans
     code: JetBrains Mono
+  logo: images/logo-dark.svg
+  favicon: images/logo.svg
   palette:
     - scheme: default
-      primary: teal
-      accent: amber
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.tabs
     - navigation.sections
@@ -55,6 +66,7 @@ nav:
     - Issue Tracking: ops/issue-tracking.md
     - Label Conventions: ops/label-conventions.md
     - Testing: ops/testing.md
+    - Marketing Screenshots: ops/marketing-screenshots.md
     - Docs Verification: ops/docs-verification.md
     - Cloudflare: ops/cloudflare.md
     - Release: ops/release.md

@@ -1,39 +1,97 @@
-# OpenScribe
+---
+hide:
+  - navigation
+  - toc
+title: OpenScribe
+---
 
-OpenScribe is a native macOS menu bar app for fast, reliable speech-to-text with optional polish.
+<style>
+  /* Hide the auto-generated h1 on the landing page */
+  .md-content h1:first-child { display: none; }
+</style>
 
-## Start here
+<div class="hero" markdown>
 
-- Evaluate OpenScribe: [Product Overview](product/index.md)
-- Understand current behavior: [Product Spec](product/spec.md)
-- See what is next: [Roadmap](product/roadmap.md)
-- Run as a contributor: [Getting Started](guides/getting-started.md)
+<p class="hero-tagline">Speech to text.<br>Fast. Local. Reliable.</p>
 
-## Why OpenScribe
+<p class="hero-sub">
+OpenScribe is a native macOS menu bar app that captures your voice and turns it into usable text. Local-first by default, with optional cloud providers when you need them.
+</p>
 
-- Local-first defaults with explicit provider choices.
-- Fast capture flow from global hotkey to usable text.
-- Clear artifact model for reliability and debugging.
+<div class="hero-actions">
+  <a href="guides/getting-started/" class="btn-primary">Get Started</a>
+  <a href="https://github.com/streichsbaer/openscribe" class="btn-secondary">View on GitHub</a>
+</div>
 
-## Main product paths
+<div class="hero-carousel">
+  <div class="hero-carousel-track">
+    <img src="images/ui/openscribe-live.png" alt="Live transcription with raw and polished text">
+    <img src="images/ui/openscribe-history.png" alt="Session history with completed transcriptions">
+    <img src="images/ui/openscribe-stats.png" alt="Stats dashboard with activity heatmap and streaks">
+  </div>
+  <div class="hero-carousel-captions">
+    <span>Speak, transcribe, polish</span>
+    <span>Browse your session history</span>
+    <span>Track your dictation momentum</span>
+  </div>
+  <div class="hero-carousel-dots">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
 
-### 1. Use it now
+</div>
+
+<div class="pillars" markdown>
+
+<div class="pillar" markdown>
+
+### Local-first privacy
+
+Your audio stays on your machine by default. You choose when and where to send data.
+
+</div>
+
+<div class="pillar" markdown>
+
+### Fast capture flow
+
+Press a hotkey, speak, stop. Raw and polished text appear in seconds.
+
+</div>
+
+<div class="pillar" markdown>
+
+### Clear artifact model
+
+Every session saves audio, raw transcript, and polished output. Replay or re-process any time.
+
+</div>
+
+</div>
+
+---
+
+<div class="paths" markdown>
+
+<div class="path-card" markdown>
+
+### Use it
 
 - [Using OpenScribe](guides/using-openscribe.md)
+- [Menu and Settings](guides/menu-and-settings.md)
 
-### 2. Contribute code and docs
+</div>
+
+<div class="path-card" markdown>
+
+### Build it
 
 - [Getting Started](guides/getting-started.md)
-- [Contributing Docs](guides/contributing-docs.md)
+- [Product Spec](product/spec.md)
+- [Roadmap](product/roadmap.md)
 
-### 3. Operate quality and releases
+</div>
 
-- [Issue Tracking](ops/issue-tracking.md)
-- [Testing](ops/testing.md)
-- [Release](ops/release.md)
-
-### 4. Dive into contracts
-
-- [Storage Contract](reference/storage-contract.md)
-- [Popover Contract](reference/popover-contract.md)
-- [Governance](reference/governance.md)
+</div>

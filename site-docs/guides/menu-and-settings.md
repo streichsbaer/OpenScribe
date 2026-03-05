@@ -45,7 +45,7 @@ Transcript polishing is running.
 
 ### Overview
 
-![OpenScribe popover](../images/ui/openscribe-window.png)
+![OpenScribe popover](../images/ui/openscribe-live.png)
 
 ### Live tab
 
