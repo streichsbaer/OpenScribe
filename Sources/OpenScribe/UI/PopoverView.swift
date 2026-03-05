@@ -4,16 +4,14 @@ import SwiftUI
 struct PopoverView: View {
     @EnvironmentObject private var shell: AppShell
     @StateObject private var playbackManager = AudioPlaybackManager()
-    @AppStorage("ui.transcriptPanelsExpanded") private var expandedTextPanels = false
     @State private var selectedRetryApproachID = ""
     @State private var selectedRetryPolishOptionID = ""
-    @State private var retryTranscriptionFilter = ""
-    @State private var retryPolishFilter = ""
     @State private var historySelectionMode = false
     @State private var selectedHistorySessionIDs: Set<UUID> = []
     @State private var pendingDeleteEntries: [SessionHistoryEntry] = []
     @State private var hoverHint: String?
-    private let infoLabelWidth: CGFloat = 44
+    @State private var showingRawTranscriptPopup = false
+    @State private var showingPolishedTranscriptPopup = false
     private static let streakUnlockDays = 3
 
     var body: some View {
@@ -41,9 +39,6 @@ struct PopoverView: View {
             syncRetryPolishSelection()
             syncRetryTranscriptionSelection()
         }
-        .onChange(of: expandedTextPanels) { _, newValue in
-            handleExpandedTextPanelsChanged(newValue)
-        }
         .onChange(of: shell.settings.polishProviderID) { _, _ in
             syncRetryPolishSelection()
         }
@@ -65,6 +60,20 @@ struct PopoverView: View {
         .onChange(of: shell.historySessions) { _, sessions in
             let validIDs = Set(sessions.map(\.id))
             selectedHistorySessionIDs = selectedHistorySessionIDs.intersection(validIDs)
+        }
+        .sheet(isPresented: $showingRawTranscriptPopup) {
+            TranscriptPopupView(
+                title: "Raw transcript",
+                text: shell.rawTranscript,
+                sourceSummary: rawSourceSummary
+            )
+        }
+        .sheet(isPresented: $showingPolishedTranscriptPopup) {
+            TranscriptPopupView(
+                title: "Polished transcript",
+                text: shell.polishedTranscript,
+                sourceSummary: polishedSourceSummary
+            )
         }
         .confirmationDialog(
             historyDeleteConfirmationTitle,
@@ -123,8 +132,11 @@ struct PopoverView: View {
 
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 10) {
-            Label("OpenScribe", systemImage: "waveform.badge.mic")
-                .font(.headline)
+            HStack(spacing: 5) {
+                OpenScribeLogo(size: 16)
+                Text("OpenScribe")
+                    .font(.headline)
+            }
 
             Spacer()
 
@@ -132,63 +144,158 @@ struct PopoverView: View {
         }
     }
 
-    private var inputSection: some View {
-        card(title: "Input") {
-            VStack(alignment: .leading, spacing: 8) {
-                keyValueRow("Device", shell.currentSession?.metadata.inputDeviceName ?? shell.systemDefaultMicrophoneName)
+    // MARK: - Live Tab
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Next recording input")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+    private var liveSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            controlBar
+            transcriptArea
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
 
-                    Picker("Next recording input", selection: sessionMicrophoneSelection) {
-                        Text("Automatic").tag("")
-                        ForEach(shell.availableMicrophones) { device in
-                            Text(device.name).tag(device.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                }
+    // MARK: Control Bar
 
-                Text(sessionMicrophoneHint)
+    private static let transcriptPanelHeight: CGFloat = 120
+
+    private var controlBar: some View {
+        HStack(spacing: 8) {
+            Button(startStopButtonLabel) {
+                shell.toggleRecording()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(startStopButtonDisabled)
+            .instantHint(startStopHelpText, hoverHint: $hoverHint)
+
+            levelMeter
+                .frame(width: 80, height: 6)
+
+            devicePicker
+
+            if shell.permissionState != .authorized {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .help(permissionWarningText)
+            }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Level")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
 
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.gray.opacity(0.18))
-                                .frame(height: 9)
-
-                            Capsule()
-                                .fill(shell.microphoneIndicatorColorName == "green" ? Color.green : Color.gray)
-                                .frame(width: max(6, CGFloat(shell.meterLevel) * geometry.size.width), height: 9)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 9)
+            Button {
+                if let audioURL = shell.currentSession?.paths.audioURL {
+                    playbackManager.toggle(url: audioURL)
                 }
+            } label: {
+                Image(systemName: playbackManager.isPlaying ? "stop.fill" : "play.fill")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(playbackManager.isPlaying ? "Stop audio" : "Play audio")
+            .opacity(hasAudioFile ? 1 : 0)
+            .disabled(!hasAudioFile)
+            .instantHint(
+                playbackManager.isPlaying ? "Stop audio playback" : "Play session audio",
+                hoverHint: $hoverHint
+            )
 
-                Text(permissionText)
-                    .font(.caption)
-                    .foregroundColor(shell.permissionState == .authorized ? .secondary : .orange)
+            Button {
+                shell.revealCurrentSessionInFinder()
+            } label: {
+                Image(systemName: "folder")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Reveal in Finder")
+            .contextMenu {
+                Button("Copy Session Path") {
+                    shell.copyCurrentSessionPath()
+                }
+            }
+            .instantHint("Reveal session in Finder (right-click to copy path)", hoverHint: $hoverHint)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(NSColor.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private var hasAudioFile: Bool {
+        guard let audioURL = shell.currentSession?.paths.audioURL else { return false }
+        return FileManager.default.fileExists(atPath: audioURL.path)
+    }
+
+    private var levelMeter: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.gray.opacity(0.18))
+
+                Capsule()
+                    .fill(shell.microphoneIndicatorColorName == "green" ? Color.green : Color.gray)
+                    .frame(width: max(4, CGFloat(shell.meterLevel) * geometry.size.width))
             }
         }
     }
 
-    private var liveSection: some View {
+    private var devicePicker: some View {
+        Menu {
+            Button("Automatic") {
+                shell.setSessionMicrophoneOverride(nil)
+            }
+            Divider()
+            ForEach(shell.availableMicrophones) { device in
+                Button(device.name) {
+                    shell.setSessionMicrophoneOverride(device.id)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "mic")
+                    .font(.caption2)
+                Text(controlBarDeviceName)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .instantHint("Change recording input device", hoverHint: $hoverHint)
+    }
+
+    private var controlBarDeviceName: String {
+        if let overrideID = shell.sessionMicrophoneOverrideID,
+           let name = shell.microphoneName(for: overrideID) {
+            return name
+        }
+        return shell.currentSession?.metadata.inputDeviceName
+            ?? shell.systemDefaultMicrophoneName
+    }
+
+    private var permissionWarningText: String {
+        switch shell.permissionState {
+        case .denied:
+            return "Microphone permission denied. Open System Settings to grant access."
+        case .undetermined:
+            return "Microphone permission not yet requested."
+        case .authorized:
+            return ""
+        }
+    }
+
+    // MARK: Transcript Area
+
+    private var transcriptArea: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                inputSection
-                sessionSection
-                textSection
+                rawTranscriptSection
+                polishedTranscriptSection
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 2)
@@ -196,181 +303,118 @@ struct PopoverView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    private var sessionSection: some View {
-        card(title: "Session") {
-            VStack(alignment: .leading, spacing: 10) {
-                keyValueRow("State", shell.sessionState.displayLabel)
+    private var rawTranscriptSection: some View {
+        transcriptSubsection {
+            Text("Raw transcript")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
 
-                HStack(spacing: 8) {
-                    Button(startStopButtonLabel) {
-                        shell.toggleRecording()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(startStopButtonDisabled)
-                    .instantHint(startStopHelpText, hoverHint: $hoverHint)
+            rawTranscriptPanel
 
-                    if let audioURL = shell.currentSession?.paths.audioURL,
-                       FileManager.default.fileExists(atPath: audioURL.path) {
-                        Button(playbackManager.isPlaying ? "Stop Audio" : "Play Audio") {
-                            playbackManager.toggle(url: audioURL)
-                        }
-                        .buttonStyle(.bordered)
-                        .instantHint("Play or stop latest session audio", hoverHint: $hoverHint)
-                    }
-
-                    Button("Reveal") {
-                        shell.revealCurrentSessionInFinder()
-                    }
-                    .buttonStyle(.bordered)
-                    .instantHint("Reveal latest session in Finder", hoverHint: $hoverHint)
+            HStack(alignment: .center, spacing: 8) {
+                Button {
+                    shell.copyRawTranscript()
+                } label: {
+                    Image(systemName: "doc.on.doc")
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Copy raw transcript")
+                .instantHint(copyRawHelpText, hoverHint: $hoverHint)
 
-                if let session = shell.currentSession {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(session.paths.folderURL.path)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .textSelection(.enabled)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-
-                        Spacer(minLength: 4)
-
-                        Button {
-                            shell.copyCurrentSessionPath()
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .instantHint("Copy session path", hoverHint: $hoverHint)
-                    }
+                Button {
+                    showingRawTranscriptPopup = true
+                } label: {
+                    Image(systemName: "arrow.up.forward.app")
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("View full raw transcript")
+                .disabled(shell.rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .instantHint("View full raw transcript", hoverHint: $hoverHint)
+
+                Button {
+                    shell.retryTranscription(
+                        temporaryProviderID: selectedRetryApproach.providerID,
+                        temporaryModel: selectedRetryApproach.model
+                    )
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Retry transcription")
+                .disabled(!canRetryTranscription)
+                .instantHint("Retry transcription with selected model", hoverHint: $hoverHint)
+
+                Spacer(minLength: 0)
+
+                SearchableModelSelector(
+                    options: retryApproaches,
+                    selectedID: $selectedRetryApproachID,
+                    disabled: false
+                )
+                .frame(maxWidth: 220)
             }
         }
     }
 
-    private var textSection: some View {
-        card(title: "Text", trailing: {
-            Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    expandedTextPanels.toggle()
-                }
-            } label: {
-                Image(systemName: expandedTextPanels ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+    private var polishedTranscriptSection: some View {
+        transcriptSubsection {
+            Text("Polished transcript")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            ScrollView {
+                Text(polishedBodyText)
+                    .font(.body)
+                    .foregroundStyle(shell.polishedTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .instantHint(expandedTextPanels ? "Compact transcript panels" : "Expand transcript panels", hoverHint: $hoverHint)
-        }) {
-            VStack(alignment: .leading, spacing: 10) {
-                transcriptSubsection {
-                    transcriptHeaderTitle(title: "Raw transcript", sourceSummary: rawSourceSummary)
-                    rawTranscriptPanel
+            .frame(height: Self.transcriptPanelHeight)
+            .padding(8)
+            .background(Color(NSColor.textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                    HStack(alignment: .center, spacing: 8) {
-                        Text("Retry with another model")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button {
-                            shell.copyRawTranscript()
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .instantHint(copyRawHelpText, hoverHint: $hoverHint)
-                    }
-
-                    HStack(alignment: .center, spacing: 8) {
-                        TextField("Search provider/model", text: $retryTranscriptionFilter)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: compactControls ? 160 : 190)
-
-                        Picker("Transcriber", selection: $selectedRetryApproachID) {
-                            ForEach(displayedRetryApproaches) { approach in
-                                Text(approach.title)
-                                    .tag(approach.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity)
-
-                        Button {
-                            shell.retryTranscription(
-                                temporaryProviderID: selectedRetryApproach.providerID,
-                                temporaryModel: selectedRetryApproach.model
-                            )
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(!canRetryTranscription)
-                        .instantHint("Rerun raw transcription using selected provider/model", hoverHint: $hoverHint)
-                    }
+            HStack(alignment: .center, spacing: 8) {
+                Button {
+                    shell.copyLatestPolished()
+                } label: {
+                    Image(systemName: "doc.on.doc")
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Copy polished transcript")
+                .instantHint(copyPolishedHelpText, hoverHint: $hoverHint)
 
-                transcriptSubsection {
-                    transcriptHeaderTitle(title: "Polished transcript", sourceSummary: polishedSourceSummary)
-                    ScrollView {
-                        Text(polishedBodyText)
-                            .font(.body)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                    .frame(height: polishedPanelHeight)
-                    .padding(8)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                    HStack(alignment: .center, spacing: 8) {
-                        Text("Retry with another model")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button {
-                            shell.copyLatestPolished()
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .instantHint(copyPolishedHelpText, hoverHint: $hoverHint)
-                    }
-
-                    HStack(alignment: .center, spacing: 8) {
-                        TextField("Search provider/model", text: $retryPolishFilter)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: compactControls ? 160 : 190)
-                            .disabled(!shell.settings.polishEnabled)
-
-                        Picker("Polish retry option", selection: $selectedRetryPolishOptionID) {
-                            ForEach(displayedRetryPolishOptions) { option in
-                                Text(option.title)
-                                    .tag(option.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity)
-                        .disabled(!shell.settings.polishEnabled)
-
-                        Button {
-                            shell.retryPolish(
-                                temporaryProviderID: selectedRetryPolishOption.providerID,
-                                temporaryModel: selectedRetryPolishOption.model
-                            )
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(shell.rawTranscript.isEmpty || !shell.settings.polishEnabled)
-                        .instantHint("Rerun polish using selected provider/model", hoverHint: $hoverHint)
-                    }
+                Button {
+                    showingPolishedTranscriptPopup = true
+                } label: {
+                    Image(systemName: "arrow.up.forward.app")
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("View full polished transcript")
+                .disabled(shell.polishedTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .instantHint("View full polished transcript", hoverHint: $hoverHint)
+
+                Button {
+                    shell.retryPolish(
+                        temporaryProviderID: selectedRetryPolishOption.providerID,
+                        temporaryModel: selectedRetryPolishOption.model
+                    )
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Retry polish")
+                .disabled(shell.rawTranscript.isEmpty || !shell.settings.polishEnabled)
+                .instantHint("Retry polish with selected model", hoverHint: $hoverHint)
+
+                Spacer(minLength: 0)
+
+                SearchableModelSelector(
+                    options: retryPolishOptions,
+                    selectedID: $selectedRetryPolishOptionID,
+                    disabled: !shell.settings.polishEnabled
+                )
+                .frame(maxWidth: 220)
             }
         }
     }
@@ -871,7 +915,7 @@ struct PopoverView: View {
             } else {
                 Text(entry.previewText)
                     .font(.subheadline)
-                    .lineLimit(expandedTextPanels ? 4 : 2)
+                    .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
@@ -980,55 +1024,6 @@ struct PopoverView: View {
         )
     }
 
-    private func keyValueRow(_ key: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(key)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: infoLabelWidth, alignment: .leading)
-
-            Text(value)
-                .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var permissionText: String {
-        switch shell.permissionState {
-        case .authorized:
-            return "Microphone permission granted"
-        case .denied:
-            return "No input: microphone permission denied"
-        case .undetermined:
-            return "Microphone permission not requested"
-        }
-    }
-
-    private var sessionMicrophoneSelection: Binding<String> {
-        Binding(
-            get: { shell.sessionMicrophoneOverrideID ?? "" },
-            set: { nextID in
-                shell.setSessionMicrophoneOverride(nextID.isEmpty ? nil : nextID)
-            }
-        )
-    }
-
-    private var sessionMicrophoneHint: String {
-        if let selectedID = shell.sessionMicrophoneOverrideID,
-           let selectedName = shell.microphoneName(for: selectedID) {
-            if let pinned = shell.settings.pinnedMicrophone {
-                return "Session selection \"\(selectedName)\" will be used next. Pinned default \"\(pinned.name)\" applies when no session selection is set."
-            }
-            return "Session selection \"\(selectedName)\" is queued for the next recording start."
-        }
-
-        if let pinned = shell.settings.pinnedMicrophone {
-            return "Pinned default \"\(pinned.name)\" will be used when no session selection is set."
-        }
-
-        return "No session override selected. The system default microphone will be used."
-    }
-
     private func openSettings() {
         shell.openSettingsWindow()
     }
@@ -1037,13 +1032,6 @@ struct PopoverView: View {
         if shell.openHistorySession(entry) {
             shell.selectPopoverTab(.live)
         }
-    }
-
-    private func handleExpandedTextPanelsChanged(_ newValue: Bool) {
-        shell.updatePopoverSize(
-            selectedTab: shell.selectedPopoverTab,
-            expandedTextPanels: newValue
-        )
     }
 
     private var polishedBodyText: String {
@@ -1061,38 +1049,6 @@ struct PopoverView: View {
         let minutes = safeSeconds / 60
         let remainder = safeSeconds % 60
         return String(format: "%02d:%02d", minutes, remainder)
-    }
-
-    private var rawPanelHeight: CGFloat {
-        panelHeight
-    }
-
-    private var polishedPanelHeight: CGFloat {
-        panelHeight
-    }
-
-    private var panelHeight: CGFloat {
-        if expandedTextPanels {
-            return 220
-        }
-        return 110
-    }
-
-    private var compactControls: Bool {
-        !expandedTextPanels
-    }
-
-    private func transcriptHeaderTitle(title: String, sourceSummary: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-            Text(sourceSummary)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
     }
 
     private func transcriptSubsection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -1119,7 +1075,7 @@ struct PopoverView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }
-        .frame(height: rawPanelHeight)
+        .frame(height: Self.transcriptPanelHeight)
         .padding(8)
         .background(Color(NSColor.textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -1221,17 +1177,9 @@ struct PopoverView: View {
         return options.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
     }
 
-    private var displayedRetryApproaches: [RetryModelOption] {
-        optionsFilteredByText(
-            retryApproaches,
-            filter: retryTranscriptionFilter,
-            includeID: selectedRetryApproachID
-        )
-    }
-
     private var selectedRetryApproach: RetryModelOption {
         retryApproaches.first(where: { $0.id == selectedRetryApproachID })
-            ?? displayedRetryApproaches.first
+            ?? retryApproaches.first
             ?? RetryModelOption(id: "fallback-transcription", title: "Unavailable", providerID: shell.settings.transcriptionProviderID, model: shell.settings.transcriptionModel)
     }
 
@@ -1298,17 +1246,9 @@ struct PopoverView: View {
         return options.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
     }
 
-    private var displayedRetryPolishOptions: [RetryModelOption] {
-        optionsFilteredByText(
-            retryPolishOptions,
-            filter: retryPolishFilter,
-            includeID: selectedRetryPolishOptionID
-        )
-    }
-
     private var selectedRetryPolishOption: RetryModelOption {
         retryPolishOptions.first(where: { $0.id == selectedRetryPolishOptionID })
-            ?? displayedRetryPolishOptions.first
+            ?? retryPolishOptions.first
             ?? RetryModelOption(id: "fallback-polish", title: "Unavailable", providerID: shell.settings.polishProviderID, model: shell.settings.polishModel)
     }
 
@@ -1351,29 +1291,6 @@ struct PopoverView: View {
             return nil
         }
         return retryApproaches.first(where: { $0.providerID == providerID && $0.model == model })?.id
-    }
-
-    private func optionsFilteredByText(
-        _ options: [RetryModelOption],
-        filter: String,
-        includeID: String
-    ) -> [RetryModelOption] {
-        let trimmed = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var filtered: [RetryModelOption]
-        if trimmed.isEmpty {
-            filtered = options
-        } else {
-            filtered = options.filter { $0.title.lowercased().contains(trimmed) }
-        }
-
-        if filtered.contains(where: { $0.id == includeID }) {
-            return filtered
-        }
-
-        if let current = options.first(where: { $0.id == includeID }) {
-            return [current] + filtered
-        }
-        return filtered
     }
 
     private func verifiedOptions(
@@ -1714,7 +1631,12 @@ struct PopoverView: View {
     }
 
     private var popoverWidth: CGFloat {
-        (shell.selectedPopoverTab == .history || shell.selectedPopoverTab == .stats || expandedTextPanels) ? 620 : 540
+        switch shell.selectedPopoverTab {
+        case .live:
+            return 540
+        case .history, .stats:
+            return 620
+        }
     }
 
 }
@@ -1724,6 +1646,483 @@ private struct RetryModelOption: Identifiable {
     let title: String
     let providerID: String
     let model: String
+}
+
+private struct TranscriptPopupView: View {
+    let title: String
+    let text: String
+    let sourceSummary: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                    Text(sourceSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut(.cancelAction)
+            }
+
+            ScrollView {
+                Text(text)
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 480, minHeight: 320)
+    }
+}
+
+/// App logo matching the adaptive SVG geometry from site-docs/images/logo.svg.
+/// Uses .primary foreground so it adapts to light/dark mode automatically.
+private struct OpenScribeLogo: View {
+    let size: CGFloat
+
+    // SVG viewBox is 18x18. Circle r=7.75 centered at (9,9), stroke 1.3.
+    // Three bars at [0.45, 0.80, 0.45] of inner rect height.
+    var body: some View {
+        Canvas { context, canvasSize in
+            let scale = canvasSize.width / 18.0
+            let center = CGPoint(x: 9 * scale, y: 9 * scale)
+            let radius = 7.75 * scale
+            let strokeWidth = 1.3 * scale
+
+            // Circle stroke
+            let circlePath = Path(ellipseIn: CGRect(
+                x: center.x - radius, y: center.y - radius,
+                width: radius * 2, height: radius * 2
+            ))
+            context.stroke(circlePath, with: .foreground, lineWidth: strokeWidth)
+
+            // Bars: x positions 5.55, 8.55, 11.55; width 1.6; rx 0.9
+            let bars: [(x: CGFloat, y: CGFloat, h: CGFloat)] = [
+                (5.55, 7.357, 3.285),
+                (8.55, 6.08,  5.84),
+                (11.55, 7.357, 3.285),
+            ]
+            let barWidth = 1.6 * scale
+            let cornerRadius = 0.9 * scale
+
+            for bar in bars {
+                let rect = CGRect(
+                    x: bar.x * scale, y: bar.y * scale,
+                    width: barWidth, height: bar.h * scale
+                )
+                let barPath = Path(roundedRect: rect, cornerRadius: cornerRadius)
+                context.fill(barPath, with: .foreground)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct SearchableModelSelector: View {
+    let options: [RetryModelOption]
+    @Binding var selectedID: String
+    let disabled: Bool
+
+    @State private var isOpen = false
+    @State private var searchText = ""
+    @FocusState private var isFocused: Bool
+
+    private var selectedTitle: String {
+        options.first(where: { $0.id == selectedID })?.title ?? "Select model"
+    }
+
+    var body: some View {
+        if isOpen {
+            TextField("Search model...", text: $searchText)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .font(.system(size: NSFont.smallSystemFontSize))
+                .focused($isFocused)
+                .onExitCommand { closeDropdown() }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        isFocused = true
+                    }
+                }
+                .background(
+                    DropdownAnchor(
+                        isOpen: $isOpen,
+                        searchText: $searchText,
+                        selectedID: $selectedID,
+                        options: options,
+                        onClose: { closeDropdown() }
+                    )
+                )
+        } else {
+            Button {
+                guard !disabled else { return }
+                isOpen = true
+                searchText = ""
+            } label: {
+                HStack(spacing: 4) {
+                    Text(selectedTitle)
+                        .font(.system(size: NSFont.smallSystemFontSize))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(disabled)
+        }
+    }
+
+    private func closeDropdown() {
+        isOpen = false
+        searchText = ""
+        isFocused = false
+    }
+}
+
+/// Invisible NSView that anchors a floating NSPanel dropdown below the text field.
+private struct DropdownAnchor: NSViewRepresentable {
+    @Binding var isOpen: Bool
+    @Binding var searchText: String
+    @Binding var selectedID: String
+    let options: [RetryModelOption]
+    let onClose: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.anchorView = view
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.applyState(
+            options: options,
+            searchText: searchText
+        )
+
+        if isOpen {
+            context.coordinator.showPanel()
+        } else {
+            context.coordinator.hidePanel()
+        }
+    }
+
+    func makeCoordinator() -> DropdownCoordinator {
+        DropdownCoordinator(
+            isOpen: $isOpen,
+            selectedID: $selectedID,
+            options: options,
+            searchText: searchText,
+            onClose: onClose
+        )
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: DropdownCoordinator) {
+        coordinator.hidePanel()
+    }
+
+    @MainActor class DropdownCoordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+        weak var anchorView: NSView?
+        var options: [RetryModelOption]
+        var searchText: String
+        @Binding var isOpen: Bool
+        @Binding var selectedID: String
+        let onClose: () -> Void
+
+        private var panel: NSPanel?
+        private var tableView: NSTableView?
+        private var clickMonitor: Any?
+        private var keyMonitor: Any?
+        private var filteredOptions: [RetryModelOption] = []
+        private var optionIDSignature: [String]
+
+        init(
+            isOpen: Binding<Bool>,
+            selectedID: Binding<String>,
+            options: [RetryModelOption],
+            searchText: String,
+            onClose: @escaping () -> Void
+        ) {
+            self._isOpen = isOpen
+            self._selectedID = selectedID
+            self.options = options
+            self.searchText = searchText
+            self.optionIDSignature = options.map(\.id)
+            self.onClose = onClose
+            super.init()
+        }
+
+        func applyState(options: [RetryModelOption], searchText: String) {
+            let nextSignature = options.map(\.id)
+            let optionsChanged = nextSignature != optionIDSignature
+            let searchChanged = self.searchText != searchText
+
+            self.options = options
+            self.searchText = searchText
+            self.optionIDSignature = nextSignature
+
+            guard panel != nil, optionsChanged || searchChanged else { return }
+
+            updateFilter()
+            reloadTablePreservingSelection()
+            repositionPanel()
+        }
+
+        func showPanel() {
+            updateFilter()
+
+            if let panel = panel {
+                repositionPanel()
+                panel.orderFront(nil)
+                return
+            }
+
+            guard let anchor = anchorView, let window = anchor.window else { return }
+
+            let table = NSTableView()
+            table.headerView = nil
+            table.style = .plain
+            table.rowHeight = 24
+            table.intercellSpacing = NSSize(width: 0, height: 0)
+            table.selectionHighlightStyle = .regular
+            table.dataSource = self
+            table.delegate = self
+            table.target = self
+            table.action = #selector(rowClicked)
+
+            let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("model"))
+            column.isEditable = false
+            table.addTableColumn(column)
+
+            let scroll = NSScrollView()
+            scroll.documentView = table
+            scroll.hasVerticalScroller = true
+            scroll.autohidesScrollers = true
+            scroll.drawsBackground = false
+
+            let dropdownPanel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 280, height: 200),
+                styleMask: [.nonactivatingPanel],
+                backing: .buffered,
+                defer: true
+            )
+            dropdownPanel.isFloatingPanel = true
+            dropdownPanel.level = .popUpMenu
+            dropdownPanel.hasShadow = true
+            dropdownPanel.isOpaque = false
+            dropdownPanel.backgroundColor = NSColor.controlBackgroundColor
+
+            let container = NSVisualEffectView()
+            container.material = .menu
+            container.state = .active
+            container.maskImage = roundedMask(size: NSSize(width: 280, height: 200), radius: 6)
+            container.addSubview(scroll)
+            scroll.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                scroll.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
+                scroll.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -4),
+                scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                scroll.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            ])
+
+            dropdownPanel.contentView = container
+            self.panel = dropdownPanel
+            self.tableView = table
+
+            reloadTablePreservingSelection()
+            repositionPanel()
+            window.addChildWindow(dropdownPanel, ordered: .above)
+
+            installClickMonitor()
+            installKeyMonitor()
+        }
+
+        func hidePanel() {
+            if let monitor = clickMonitor {
+                NSEvent.removeMonitor(monitor)
+                clickMonitor = nil
+            }
+            if let monitor = keyMonitor {
+                NSEvent.removeMonitor(monitor)
+                keyMonitor = nil
+            }
+            if let panel = panel {
+                panel.parent?.removeChildWindow(panel)
+                panel.orderOut(nil)
+            }
+            panel = nil
+            tableView = nil
+        }
+
+        // MARK: Event Monitors
+
+        private func installClickMonitor() {
+            clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+                guard let self = self, self.isOpen else { return event }
+                if event.window === self.panel {
+                    return event
+                }
+                if let hitView = event.window?.contentView?.hitTest(
+                    event.window?.contentView?.convert(event.locationInWindow, from: nil) ?? .zero
+                ), self.isViewInsideTextField(hitView) {
+                    return event
+                }
+                DispatchQueue.main.async { self.onClose() }
+                return event
+            }
+        }
+
+        private func isViewInsideTextField(_ view: NSView) -> Bool {
+            var current: NSView? = view
+            while let v = current {
+                if v is NSTextField { return true }
+                current = v.superview
+            }
+            return false
+        }
+
+        private func installKeyMonitor() {
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self = self, self.isOpen, let table = self.tableView else { return event }
+                guard !self.filteredOptions.isEmpty else { return event }
+
+                switch event.keyCode {
+                case 125: // arrow down
+                    let next = table.selectedRow + 1
+                    if next < self.filteredOptions.count {
+                        table.selectRowIndexes(IndexSet(integer: next), byExtendingSelection: false)
+                        table.scrollRowToVisible(next)
+                    }
+                    return nil
+                case 126: // arrow up
+                    let prev = table.selectedRow - 1
+                    if prev >= 0 {
+                        table.selectRowIndexes(IndexSet(integer: prev), byExtendingSelection: false)
+                        table.scrollRowToVisible(prev)
+                    }
+                    return nil
+                case 36: // return/enter
+                    let row = table.selectedRow
+                    if row >= 0, row < self.filteredOptions.count {
+                        self.selectedID = self.filteredOptions[row].id
+                    } else if let first = self.filteredOptions.first {
+                        self.selectedID = first.id
+                    }
+                    DispatchQueue.main.async { self.onClose() }
+                    return nil
+                default:
+                    return event
+                }
+            }
+        }
+
+        // MARK: Filtering & Layout
+
+        private func updateFilter() {
+            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if query.isEmpty {
+                filteredOptions = options
+            } else {
+                filteredOptions = options.filter { $0.title.lowercased().contains(query) }
+            }
+        }
+
+        private func repositionPanel() {
+            guard let anchor = anchorView, let window = anchor.window, let panel = panel else { return }
+            let anchorFrame = anchor.convert(anchor.bounds, to: nil)
+            let screenFrame = window.convertToScreen(anchorFrame)
+            let panelWidth: CGFloat = max(anchorFrame.width, 280)
+            let rowCount = min(filteredOptions.count, 10)
+            let panelHeight = CGFloat(max(rowCount, 1)) * 24 + 8
+            let origin = NSPoint(
+                x: screenFrame.maxX - panelWidth,
+                y: screenFrame.minY - panelHeight - 2
+            )
+            panel.setFrame(NSRect(origin: origin, size: NSSize(width: panelWidth, height: panelHeight)), display: true)
+        }
+
+        private func roundedMask(size: NSSize, radius: CGFloat) -> NSImage {
+            let image = NSImage(size: size)
+            image.lockFocus()
+            let path = NSBezierPath(roundedRect: NSRect(origin: .zero, size: size), xRadius: radius, yRadius: radius)
+            NSColor.black.setFill()
+            path.fill()
+            image.unlockFocus()
+            return image
+        }
+
+        private func reloadTablePreservingSelection() {
+            guard let table = tableView else { return }
+
+            let selectedIDBeforeReload: String? = {
+                let row = table.selectedRow
+                guard row >= 0, row < filteredOptions.count else { return selectedID }
+                return filteredOptions[row].id
+            }()
+
+            table.reloadData()
+
+            guard !filteredOptions.isEmpty else { return }
+
+            if let selectedIDBeforeReload,
+               let selectedIndex = filteredOptions.firstIndex(where: { $0.id == selectedIDBeforeReload }) {
+                table.selectRowIndexes(IndexSet(integer: selectedIndex), byExtendingSelection: false)
+                table.scrollRowToVisible(selectedIndex)
+            }
+        }
+
+        // MARK: NSTableViewDataSource
+
+        func numberOfRows(in tableView: NSTableView) -> Int {
+            return max(filteredOptions.count, 1)
+        }
+
+        // MARK: NSTableViewDelegate
+
+        func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+            guard !filteredOptions.isEmpty else {
+                let cell = NSTextField(labelWithString: "No matching models")
+                cell.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+                cell.textColor = .secondaryLabelColor
+                cell.lineBreakMode = .byTruncatingTail
+                return cell
+            }
+            let option = filteredOptions[row]
+            let cell = NSTextField(labelWithString: option.title)
+            cell.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            cell.textColor = .labelColor
+            cell.lineBreakMode = .byTruncatingTail
+            return cell
+        }
+
+        func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+            !filteredOptions.isEmpty
+        }
+
+        @objc private func rowClicked() {
+            guard let table = tableView else { return }
+            let row = table.clickedRow
+            guard row >= 0, row < filteredOptions.count else { return }
+            selectedID = filteredOptions[row].id
+            onClose()
+        }
+    }
 }
 
 private struct InstantHintModifier: ViewModifier {

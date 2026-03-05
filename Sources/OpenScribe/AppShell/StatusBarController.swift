@@ -7,7 +7,7 @@ final class StatusBarController: NSObject {
     private static let popoverVerticalMargin: CGFloat = 64
     private static let popoverMaxHeightFraction: CGFloat = 0.88
     private static let popoverMinHeight: CGFloat = 420
-    private static let transcriptPanelsExpandedDefaultsKey = "ui.transcriptPanelsExpanded"
+    // Popover uses a single live size -- no compact/expanded modes.
     private enum MicIconState {
         case idle
         case working
@@ -510,30 +510,29 @@ final class StatusBarController: NSObject {
                 debugLines.append("popoverHotkeyLiveCapture=fail")
             }
 
-            let sampleText = "Expanded mode smoke sample: transcript content should remain scrollable and never overlap controls."
+            let sampleText = "Smoke sample: transcript content should remain scrollable and never overlap controls."
             shell.rawTranscript = sampleText + " Raw."
             shell.polishedTranscript = sampleText + " Polished."
             shell.rawTranscriptProviderID = "groq_whisper"
             shell.rawTranscriptModel = "whisper-large-v3-turbo"
             shell.polishedTranscriptProviderID = "gemini_polish"
             shell.polishedTranscriptModel = "gemini-2.5-flash-lite"
-            UserDefaults.standard.set(true, forKey: Self.transcriptPanelsExpandedDefaultsKey)
             shell.selectPopoverTab(.live)
             try? await Task.sleep(nanoseconds: 500_000_000)
-            let liveExpandedView = popover.contentViewController?.view.window?.contentView
+            let liveContentView = popover.contentViewController?.view.window?.contentView
                 ?? popover.contentViewController?.view
-            let liveExpandedMetrics = currentPopoverLayoutMetrics()
-            if let liveExpandedMetrics {
-                debugLines.append("popoverLiveExpandedMetrics=\(liveExpandedMetrics.debugString)")
+            let liveContentMetrics = currentPopoverLayoutMetrics()
+            if let liveContentMetrics {
+                debugLines.append("popoverLiveContentMetrics=\(liveContentMetrics.debugString)")
             } else {
-                debugLines.append("popoverLiveExpandedMetrics=missing")
+                debugLines.append("popoverLiveContentMetrics=missing")
             }
-            if captureViewSnapshot(liveExpandedView, to: liveExpandedContentImageURL) {
+            if captureViewSnapshot(liveContentView, to: liveExpandedContentImageURL) {
                 liveExpandedContentCaptureStatus = "pass"
-                debugLines.append("popoverLiveExpandedContentCapture=pass")
+                debugLines.append("popoverLiveContentCapture=pass")
             } else {
                 liveExpandedContentCaptureStatus = "fail"
-                debugLines.append("popoverLiveExpandedContentCapture=fail")
+                debugLines.append("popoverLiveContentCapture=fail")
             }
         } else {
             hotkeyCaptureFailures = 3

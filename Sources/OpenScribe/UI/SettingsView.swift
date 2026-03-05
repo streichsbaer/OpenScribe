@@ -78,7 +78,6 @@ struct SettingsView: View {
     @State private var showTranscriptionInstructionEditor = false
     @State private var showPolishInstructionEditor = false
     @FocusState private var focusedInstructionEditor: InstructionEditorTarget?
-    @AppStorage("ui.transcriptPanelsExpanded") private var transcriptPanelsExpanded = false
     private let onPreferredSizeChange: ((CGSize, Bool) -> Void)?
     private let providerPickerWidth: CGFloat = 240
     private let modelSelectorWidth: CGFloat = 360
@@ -282,11 +281,6 @@ struct SettingsView: View {
                          : "Auto-paste enabled but Accessibility permission is missing. Open Accessibility Settings in Hotkeys.")
                         .font(.caption)
                         .foregroundColor(shell.accessibilityPermissionGranted ? .secondary : .orange)
-                }
-
-                settingRow("Expanded transcript panels by default") {
-                    Toggle("", isOn: $transcriptPanelsExpanded)
-                        .labelsHidden()
                 }
 
                 Text("Retention policy: keep all session artifacts until manually deleted.")

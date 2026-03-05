@@ -56,9 +56,7 @@ struct ProviderConnectivityStatus: Equatable {
 final class AppShell: ObservableObject {
     private static let autoPasteOnCompleteDefaultsKey = "behavior.autoPasteOnComplete"
     private static let historyDefaultInitialLoad = 10
-    private static let transcriptPanelsExpandedDefaultsKey = "ui.transcriptPanelsExpanded"
-    private static let liveCompactPopoverSize = CGSize(width: 540, height: 700)
-    private static let liveExpandedPopoverSize = CGSize(width: 620, height: 980)
+    private static let livePopoverSize = CGSize(width: 540, height: 620)
     private static let historyPopoverSize = CGSize(width: 620, height: 700)
     private static let statsPopoverSize = CGSize(width: 620, height: 700)
     private static let showLiveTabHotkey = HotkeySetting(
@@ -451,11 +449,8 @@ final class AppShell: ObservableObject {
         registerHotkeys()
     }
 
-    func updatePopoverSize(selectedTab: PopoverTabSelection, expandedTextPanels: Bool) {
-        updatePopoverSizeHandler?(preferredPopoverSize(
-            selectedTab: selectedTab,
-            expandedTextPanels: expandedTextPanels
-        ))
+    func updatePopoverSize(selectedTab: PopoverTabSelection) {
+        updatePopoverSizeHandler?(preferredPopoverSize(selectedTab: selectedTab))
     }
 
     func selectPopoverTab(_ tab: PopoverTabSelection, revealPopover: Bool = false) {
@@ -465,17 +460,14 @@ final class AppShell: ObservableObject {
         } else if tab == .stats {
             refreshStatsSummary()
         }
-        updatePopoverSize(selectedTab: tab, expandedTextPanels: isTranscriptPanelsExpanded)
+        updatePopoverSize(selectedTab: tab)
         if revealPopover {
             showPopoverWindow()
         }
     }
 
     func preferredPopoverSizeForCurrentState() -> CGSize {
-        preferredPopoverSize(
-            selectedTab: selectedPopoverTab,
-            expandedTextPanels: isTranscriptPanelsExpanded
-        )
+        preferredPopoverSize(selectedTab: selectedPopoverTab)
     }
 
     func updateRawTranscriptFromEditor(_ text: String) {
@@ -1130,17 +1122,10 @@ final class AppShell: ObservableObject {
         return value
     }
 
-    private var isTranscriptPanelsExpanded: Bool {
-        userDefaults.bool(forKey: Self.transcriptPanelsExpandedDefaultsKey)
-    }
-
-    private func preferredPopoverSize(
-        selectedTab: PopoverTabSelection,
-        expandedTextPanels: Bool
-    ) -> CGSize {
+    private func preferredPopoverSize(selectedTab: PopoverTabSelection) -> CGSize {
         switch selectedTab {
         case .live:
-            return expandedTextPanels ? Self.liveExpandedPopoverSize : Self.liveCompactPopoverSize
+            return Self.livePopoverSize
         case .history:
             return Self.historyPopoverSize
         case .stats:
