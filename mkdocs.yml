@@ -51,12 +51,14 @@ plugins:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascripts/home-carousel.js
+
 nav:
   - Home: index.md
   - Guides:
     - Getting Started: guides/getting-started.md
     - How It Works: guides/how-it-works.md
-    - Menu and Settings: guides/menu-and-settings.md
     - Providers and Models: guides/providers.md
     - Custom Rules: guides/custom-rules.md
     - Your Data: guides/your-data.md
@@ -67,6 +69,7 @@ nav:
     - Contributing: product/contributing.md
     - Governance: reference/governance.md
   - Reference:
+    - UI Reference: reference/ui-reference.md
     - Technical:
       - Storage Contract: reference/storage-contract.md
       - Popover Contract: reference/popover-contract.md

@@ -1,34 +1,32 @@
 # How It Works
 
-OpenScribe turns speech into text through a three-stage pipeline: record, transcribe, polish. Each stage runs in sequence, and you can see progress in the menu bar icon and the Live tab.
+Every OpenScribe session follows the same path: record, transcribe, polish. Once you know that loop, the app becomes easy to read because the menu bar icon and the Live tab are always telling you where the current session is.
 
-## The pipeline
+![Live tab showing raw and polished output](../images/ui/openscribe-live.png){ .guide-shot }
 
-### 1. Record
+## 1. Record first
 
-Press the start/stop hotkey (default: `Fn + Space`) to begin recording. The menu bar icon changes to show that audio capture is active.
+Press the start or stop hotkey, `Fn + Space` by default, to begin recording. The menu bar icon changes immediately so you can tell that audio capture is live.
 
-Speak naturally. OpenScribe writes audio to disk incrementally during recording.
+While you speak, OpenScribe writes audio to disk incrementally. When you press the hotkey again, recording stops and the audio file is finalized.
 
-When you press the hotkey again, recording stops and the audio file is finalized.
+## 2. Then transcribe
 
-### 2. Transcribe
-
-After recording stops, OpenScribe sends the audio through your selected speech-to-text provider. By default this is whisper.cpp, which runs entirely on your Mac with no network calls.
+After recording stops, OpenScribe sends the audio through your selected speech-to-text provider. By default that is whisper.cpp, which runs entirely on your Mac with no network calls.
 
 The raw transcript appears in the Live tab as soon as transcription completes.
 
 If the recording had no usable speech signal, OpenScribe skips transcription and shows a "No audio captured" status.
 
-### 3. Polish (optional)
+## 3. Polish if you want cleanup
 
-If polish is enabled, OpenScribe sends the raw transcript to a language model that cleans up grammar, formatting, and structure. The polish step uses your custom rules from `Rules/rules.md` to guide its output.
+If polish is enabled, OpenScribe sends the raw transcript to a language model that cleans up grammar, formatting, and structure. The polish step also uses your custom rules from `Rules/rules.md`, so you can steer tone, spelling, and formatting.
 
-The polished text appears below the raw transcript in the Live tab.
+The polished text appears below the raw transcript in the Live tab when the step finishes.
 
 If polish is disabled, the polished output is a direct copy of the raw transcript.
 
-## What you see during each stage
+## What the app shows while it works
 
 The menu bar icon reflects the current pipeline state:
 
@@ -42,7 +40,7 @@ The Live tab header also shows elapsed time for the current stage.
 
 ## After the pipeline completes
 
-Every completed session saves four artifacts:
+Every completed session saves four artifacts, so you can revisit what happened later:
 
 - `audio.m4a` -- your recording.
 - `session.json` -- metadata (provider, model, timestamps).
@@ -53,10 +51,10 @@ If copy-on-complete is enabled (the default), the polished text is automatically
 
 ## Re-processing
 
-You can re-run transcription or polish on any session from the Live or History tab. Each re-run lets you pick a different provider and model, so you can compare results without recording again.
+You can re-run transcription or polish on any session from the Live or History tab. That makes it easy to compare providers or models without recording the same note twice.
 
 ## Continue
 
-- Full UI reference: [Menu and Settings](menu-and-settings.md)
+- Full UI reference: [UI Reference](../reference/ui-reference.md)
 - Provider options: [Providers and Models](providers.md)
 - Where your files are stored: [Your Data](your-data.md)

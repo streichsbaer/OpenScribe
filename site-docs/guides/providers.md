@@ -1,29 +1,34 @@
 # Providers and Models
 
-OpenScribe supports local and cloud providers for both transcription and polish. Choose transcription settings in Settings > Transcribe, polish settings in Settings > Polish, and API tokens in Settings > Providers.
+OpenScribe lets you mix local and cloud providers depending on how you want the app to behave. A simple setup can stay fully local. A more flexible setup can add cloud models for transcription, polish, or both.
 
-## Transcription providers
+![Providers settings tab](../images/ui/settings-providers.png){ .guide-shot }
 
-### Local: whisper.cpp (default)
+## Start with transcription
 
-Whisper.cpp runs speech-to-text entirely on your Mac. No API key needed, no audio leaves your machine.
+If you want the default local-first path, keep transcription on whisper.cpp. It runs on your Mac, needs no API key, and keeps your audio off the network.
 
+If you want cloud transcription, add an API key in Settings > Providers and then choose that provider in Settings > Transcribe.
+
+### Local: whisper.cpp
+
+- No API key needed.
 - Default model: `base`.
-- Larger models (small, medium, large) improve accuracy but use more memory and take longer.
+- Larger models improve accuracy but use more memory and take longer.
 - Manage installed models in Settings > Data.
 
 ### Cloud transcription
 
-These providers require an API key and send your audio over the network:
+These providers send your audio over the network and require an API key:
 
-- **OpenAI Whisper API** -- high accuracy, widely used.
-- **Groq Whisper API** -- fast inference.
-- **OpenRouter** -- OpenAI-compatible API with access to multiple model providers.
-- **Gemini** -- OpenAI-compatible API from Google.
+- **OpenAI Whisper API** for broad compatibility and strong accuracy.
+- **Groq Whisper API** for fast inference.
+- **OpenRouter** for access to multiple upstream model providers.
+- **Gemini** for Google-hosted models through an OpenAI-compatible interface.
 
-## Polish providers
+## Turn on polish when you want cleaner output
 
-Polish runs a language model on your raw transcript to improve grammar, formatting, and structure. All polish providers are cloud-based and require an API key:
+Polish runs a language model on your raw transcript to improve grammar, formatting, and structure. All polish providers are cloud-based, so this step always needs an API key.
 
 - **OpenAI** -- default: `gpt-5-nano`.
 - **Groq** -- fast inference for supported models.
@@ -32,7 +37,9 @@ Polish runs a language model on your raw transcript to improve grammar, formatti
 
 Polish is disabled by default. Enable it in Settings > Polish.
 
-## Setting up API keys
+![Transcribe settings tab](../images/ui/settings-transcribe.png){ .guide-shot }
+
+## Add your keys, then refresh models
 
 1. Open Settings > Providers.
 2. Enter your API key for each provider you want to use.
@@ -42,18 +49,19 @@ Polish is disabled by default. Enable it in Settings > Polish.
 
 API keys are stored in the macOS Keychain.
 
-## Choosing a model
+## Choose a model deliberately
 
-Each provider offers multiple models. Use the model picker in Settings > Transcribe or Settings > Polish to browse available options. Use Refresh models beside the relevant provider in Settings > Providers when you want to fetch the latest model list.
+Use the model picker in Settings > Transcribe or Settings > Polish to browse what each provider offers. Refresh the provider model list in Settings > Providers when you want the latest options.
 
-For transcription, larger models are generally more accurate but slower. For polish, the choice depends on your preference for speed versus output quality.
+For transcription, larger models are usually more accurate and slower. For polish, the right choice depends on how much latency you are willing to trade for better cleanup.
 
 ## Language
 
-Language mode is set in Settings > Transcribe. The default is `auto`, which lets the transcription provider detect the spoken language. You can also set a specific language.
+Language mode lives in Settings > Transcribe. The default is `auto`, which lets the provider detect the spoken language. If you mainly dictate in one language, setting it explicitly can improve consistency.
 
 ## Continue
 
 - How the pipeline works: [How It Works](how-it-works.md)
 - Polish rules: [Custom Rules](custom-rules.md)
+- Full field reference: [UI Reference](../reference/ui-reference.md)
 - Provider behavior details: [Product Spec](../product/spec.md)

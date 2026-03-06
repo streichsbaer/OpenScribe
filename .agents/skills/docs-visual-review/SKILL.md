@@ -71,7 +71,7 @@ zsh .agents/skills/docs-visual-review/scripts/run.sh --keep-server
 
 - Always report both:
   - Script status from `report.md`
-  - Visual findings after inspecting `home.png`, `menu-and-settings.png`, and `product-spec.png`
+  - Visual findings after inspecting `home.png`, `ui-reference.png`, and `product-spec.png`
 - Visual inspection method:
   - Open and inspect the generated screenshots directly with the image tool.
   - Do not run auxiliary image processing commands such as `ffmpeg`, ImageMagick, pixel probes, or ad hoc dimension scripts unless Stefan explicitly asks for that deeper analysis.
@@ -90,6 +90,6 @@ Artifacts:
 - `mkdocs-serve.log`
 - `playwright.log`
 - `home.png`
-- `menu-and-settings.png`
+- `ui-reference.png`
 - `product-spec.png`
 - `report.md`

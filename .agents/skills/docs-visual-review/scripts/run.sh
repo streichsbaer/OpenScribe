@@ -270,7 +270,7 @@ fi
 
 base_url="${DOCS_URL%/}"
 home_url="$DOCS_URL"
-menu_url="$base_url/guides/menu-and-settings/"
+ui_reference_url="$base_url/reference/ui-reference/"
 spec_url="$base_url/product/spec/"
 
 echo "[docs-visual-review] running Playwright capture"
@@ -278,8 +278,8 @@ echo "[docs-visual-review] running Playwright capture"
   playwright-cli open about:blank
   playwright-cli goto "$home_url"
   playwright-cli screenshot --filename "$OUT_DIR/home.png" --full-page
-  playwright-cli goto "$menu_url"
-  playwright-cli screenshot --filename "$OUT_DIR/menu-and-settings.png" --full-page
+  playwright-cli goto "$ui_reference_url"
+  playwright-cli screenshot --filename "$OUT_DIR/ui-reference.png" --full-page
   playwright-cli goto "$spec_url"
   playwright-cli screenshot --filename "$OUT_DIR/product-spec.png" --full-page
   playwright-cli console error
@@ -323,7 +323,7 @@ cat >"$OUT_DIR/report.md" <<EOF
 ## Screenshots
 
 - home: \`home.png\`
-- menu and settings: \`menu-and-settings.png\`
+- ui reference: \`ui-reference.png\`
 - product spec: \`product-spec.png\`
 
 ## Logs

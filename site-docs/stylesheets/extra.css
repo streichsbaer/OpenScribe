@@ -18,6 +18,8 @@
   --scribe-surface-border: #e2e8f0;
   --scribe-nav-active-bg: #fef3c7;
   --scribe-nav-active-text: #92400e;
+  --scribe-lightbox-media-top: #ffffff;
+  --scribe-lightbox-media-bottom: #f8fafc;
 
   /* Material overrides */
   --md-primary-fg-color: var(--scribe-ink);
@@ -49,6 +51,8 @@
   --scribe-surface-border: #334155;
   --scribe-nav-active-bg: rgba(245, 158, 11, 0.10);
   --scribe-nav-active-text: #fbbf24;
+  --scribe-lightbox-media-top: #162033;
+  --scribe-lightbox-media-bottom: #111827;
 
   /* Material slate overrides */
   --md-default-bg-color: var(--scribe-surface);
@@ -234,6 +238,17 @@ body {
   height: auto;
 }
 
+.md-typeset img.guide-shot {
+  display: block;
+  width: min(100%, 820px);
+  margin: 1.15rem auto 1.4rem;
+  border-radius: 16px;
+  border: 1px solid var(--scribe-surface-border);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.10),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  background: var(--scribe-surface-card);
+}
+
 /* ============================================================
    Hero section — landing page only
    ============================================================ */
@@ -311,85 +326,66 @@ body {
 
 /* ---- Product screenshot carousel ---- */
 
-/*
- * Pure CSS crossfade carousel for 3 slides.
- * Total cycle: 15s (5s per slide: 3.5s hold + 1.5s fade).
- * Each slide is absolutely positioned and fades via opacity.
- * Captions sit below the image area using the label element.
- */
-
 .hero-carousel {
   position: relative;
-  max-width: 620px;
+  max-width: 860px;
   margin: 0 auto 1rem;
 }
 
-/* Reserve vertical space so layout does not jump.
-   Aspect ratio matches popover screenshots (~9:10). */
 .hero-carousel-track {
   position: relative;
   width: 100%;
   aspect-ratio: 9 / 10;
-  overflow: hidden;
+  overflow: visible;
+  padding: 0.35rem;
+  border-radius: 18px;
 }
 
-.hero-carousel-track img {
+.hero-carousel-slide {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(14px) scale(0.985);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  cursor: zoom-in;
+}
+
+.hero-carousel-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.hero-carousel-slide img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center;
-  opacity: 0;
-  animation: carousel-fade 15s infinite;
+  border-radius: 18px;
+  filter: drop-shadow(0 18px 34px rgba(15, 23, 42, 0.14));
 }
 
-/* Stagger each slide by 5s (15s / 3 slides) */
-.hero-carousel-track img:nth-child(1) {
-  animation-delay: 0s;
+.hero-carousel-slide:focus-visible {
+  outline: 3px solid var(--scribe-amber);
+  outline-offset: 5px;
 }
 
-.hero-carousel-track img:nth-child(2) {
-  animation-delay: 5s;
-}
-
-.hero-carousel-track img:nth-child(3) {
-  animation-delay: 10s;
-}
-
-@keyframes carousel-fade {
-  0% {
-    opacity: 0;
-  }
-
-  3% {
-    opacity: 1;
-  }
-
-  33.33% {
-    opacity: 1;
-  }
-
-  36.33% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Caption area below the carousel */
 .hero-carousel-captions {
   position: relative;
   height: 1.6rem;
-  margin-top: 0.7rem;
+  margin-top: 0.9rem;
   text-align: center;
   overflow: hidden;
 }
 
-.hero-carousel-captions span {
+.hero-carousel-caption {
   position: absolute;
   inset: 0;
   display: flex;
@@ -400,22 +396,13 @@ body {
   color: var(--scribe-muted);
   letter-spacing: 0.01em;
   opacity: 0;
-  animation: carousel-fade 15s infinite;
+  transition: opacity 0.25s ease;
 }
 
-.hero-carousel-captions span:nth-child(1) {
-  animation-delay: 0s;
+.hero-carousel-caption.is-active {
+  opacity: 1;
 }
 
-.hero-carousel-captions span:nth-child(2) {
-  animation-delay: 5s;
-}
-
-.hero-carousel-captions span:nth-child(3) {
-  animation-delay: 10s;
-}
-
-/* Dot indicators */
 .hero-carousel-dots {
   display: flex;
   justify-content: center;
@@ -423,46 +410,33 @@ body {
   margin-top: 0.5rem;
 }
 
-.hero-carousel-dots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.hero-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
   background: var(--scribe-surface-border);
-  animation: carousel-dot 15s infinite;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
 }
 
-.hero-carousel-dots span:nth-child(1) {
-  animation-delay: 0s;
+.hero-carousel-dot:hover,
+.hero-carousel-dot.is-active {
+  background: var(--scribe-amber);
+  transform: scale(1.2);
 }
 
-.hero-carousel-dots span:nth-child(2) {
-  animation-delay: 5s;
+.hero-carousel-dot:focus-visible {
+  outline: 2px solid var(--scribe-amber);
+  outline-offset: 3px;
 }
 
-.hero-carousel-dots span:nth-child(3) {
-  animation-delay: 10s;
-}
-
-@keyframes carousel-dot {
-  0% {
-    background: var(--scribe-surface-border);
-  }
-
-  3% {
-    background: var(--scribe-amber);
-  }
-
-  33.33% {
-    background: var(--scribe-amber);
-  }
-
-  36.33% {
-    background: var(--scribe-surface-border);
-  }
-
-  100% {
-    background: var(--scribe-surface-border);
-  }
+.hero-carousel-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  color: var(--scribe-muted);
+  text-align: center;
 }
 
 /* Legacy single-image fallback class (kept for other pages) */
@@ -473,6 +447,81 @@ body {
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.10),
     0 1px 4px rgba(15, 23, 42, 0.06);
   border: 1px solid var(--scribe-surface-border);
+}
+
+.hero-lightbox[hidden] {
+  display: none;
+}
+
+.hero-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.hero-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(8px);
+  cursor: zoom-out;
+}
+
+.hero-lightbox__frame {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: min(98vw, 1440px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hero-lightbox__frame img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 7rem);
+  object-fit: contain;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--scribe-lightbox-media-top) 0%, var(--scribe-lightbox-media-bottom) 100%);
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.34);
+}
+
+.hero-lightbox-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.66);
+  color: #f8fafc;
+  font: inherit;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.hero-lightbox-caption {
+  margin: 0;
+  text-align: center;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+body.hero-lightbox-open {
+  overflow: hidden;
 }
 
 /* ---- Value pillars grid ---- */
@@ -586,7 +635,46 @@ body {
   }
 
   .hero-carousel {
-    max-width: 92%;
+    max-width: 100%;
+  }
+
+  .hero-carousel-track {
+    padding: 0.2rem;
+  }
+
+  .hero-carousel-slide {
+    inset: 0.2rem;
+  }
+
+  .hero-carousel-caption {
+    font-size: 0.8rem;
+    padding: 0 0.6rem;
+  }
+
+  .hero-carousel-hint {
+    font-size: 0.78rem;
+  }
+
+  .hero-lightbox {
+    padding: 0.5rem;
+  }
+
+  .hero-lightbox__frame {
+    width: 100%;
+  }
+
+  .hero-lightbox__frame img {
+    max-height: calc(100vh - 8rem);
+  }
+
+  .hero-lightbox-close {
+    top: 0.35rem;
+    right: 0.35rem;
+  }
+
+  .hero-lightbox-caption {
+    font-size: 0.88rem;
+    padding: 0 0.35rem;
   }
 }
 

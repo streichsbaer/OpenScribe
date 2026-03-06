@@ -7,11 +7,9 @@ Download the latest release from [GitHub Releases](https://github.com/streichsba
 !!! note "Unsigned builds"
     OpenScribe is currently distributed as an unsigned app. On first launch, right-click the app and select Open, then confirm in the security dialog. Apple Developer Program enrollment is pending.
 
-## First launch
+## Launch it once
 
-1. Open OpenScribe from Applications.
-2. Grant microphone access when prompted.
-3. The OpenScribe icon appears in your menu bar.
+Open OpenScribe from Applications and grant microphone access when macOS prompts you. After launch, the app lives in your menu bar, so the key thing to look for is the OpenScribe icon near the clock.
 
 ## Your first recording
 
@@ -20,14 +18,21 @@ Download the latest release from [GitHub Releases](https://github.com/streichsba
 3. Press `Fn + Space` again to stop.
 4. Click the menu bar icon to open the popover and see your transcript.
 
-The raw transcript appears first. If polish is enabled, the polished version follows.
+The raw transcript appears first. If polish is enabled, the polished version appears below it in the same view.
 
-## What to explore next
+![Live tab after a recording](../images/ui/openscribe-live.png){ .guide-shot }
 
-- **Providers**: by default, transcription runs locally with whisper.cpp. See [Providers and Models](providers.md) to set up cloud providers or change models.
-- **Polish**: enable polish in Settings > Polish to get cleaned-up transcripts. See [Custom Rules](custom-rules.md) to personalize the output.
-- **Hotkeys**: customize keyboard shortcuts in Settings > Hotkeys.
-- **Settings**: see [Menu and Settings](menu-and-settings.md) for the full settings reference.
+If you do not see any text after stopping, check the menu bar icon state. A no-audio icon usually means macOS recorded silence or the wrong microphone.
+
+## Tune the basics next
+
+If you want the simplest setup, leave transcription on the default local whisper.cpp provider. If you want cloud transcription or model choices, open [Providers and Models](providers.md) and add the services you want to use.
+
+If you want OpenScribe to clean up grammar and formatting after transcription, turn on polish in Settings > Polish and then tailor the output with [Custom Rules](custom-rules.md).
+
+If the default shortcuts do not fit your workflow, open Settings > Hotkeys and adjust them before you build muscle memory.
+
+For a complete tour of the popover, menu bar states, and every settings tab, use the [UI Reference](../reference/ui-reference.md).
 
 ## Building from source
 

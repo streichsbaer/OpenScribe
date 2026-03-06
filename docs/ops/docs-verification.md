@@ -16,7 +16,7 @@ Pass criteria:
 
 - `mkdocs build --strict` exits successfully.
 - `artifacts/docs-visual/local-latest/report.md` shows `playwright: pass`.
-- Key screenshots exist: `home.png`, `menu-and-settings.png`, `product-spec.png`.
+- Key screenshots exist: `home.png`, `ui-reference.png`, `product-spec.png`.
 
 ## After push
 
@@ -36,7 +36,7 @@ Pass criteria:
 
 ```bash
 curl -I https://openscribe.dev/
-curl -I https://openscribe.dev/guides/menu-and-settings/
+curl -I https://openscribe.dev/reference/ui-reference/
 curl -I https://openscribe.dev/product/spec/
 ```
 

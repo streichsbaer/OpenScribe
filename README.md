@@ -43,7 +43,7 @@ First-run checks:
 
 - Product overview: [site-docs/product/index.md](site-docs/product/index.md)
 - Guides: [site-docs/guides/](site-docs/guides)
-- Menu and settings: [site-docs/guides/menu-and-settings.md](site-docs/guides/menu-and-settings.md)
+- UI reference: [site-docs/reference/ui-reference.md](site-docs/reference/ui-reference.md)
 - Testing: [site-docs/ops/testing.md](site-docs/ops/testing.md)
 - Release flow: [site-docs/ops/release.md](site-docs/ops/release.md)
 - Reference contracts: [site-docs/reference/](site-docs/reference)

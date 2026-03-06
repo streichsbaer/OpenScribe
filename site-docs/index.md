@@ -25,19 +25,35 @@ OpenScribe is a native macOS menu bar app that captures your voice and turns it 
 
 <div class="hero-carousel">
   <div class="hero-carousel-track">
-    <img src="images/ui/openscribe-live.png" alt="Live transcription with raw and polished text">
-    <img src="images/ui/openscribe-history.png" alt="Session history with completed transcriptions">
-    <img src="images/ui/openscribe-stats.png" alt="Stats dashboard with activity heatmap and streaks">
+    <button class="hero-carousel-slide is-active" type="button" aria-label="Open screenshot: Speak, transcribe, polish">
+      <img src="images/ui/openscribe-live.png" alt="Live transcription with raw and polished text">
+    </button>
+    <button class="hero-carousel-slide" type="button" aria-label="Open screenshot: Browse your session history">
+      <img src="images/ui/openscribe-history.png" alt="Session history with completed transcriptions">
+    </button>
+    <button class="hero-carousel-slide" type="button" aria-label="Open screenshot: Track your dictation momentum">
+      <img src="images/ui/openscribe-stats.png" alt="Stats dashboard with activity heatmap and streaks">
+    </button>
   </div>
-  <div class="hero-carousel-captions">
-    <span>Speak, transcribe, polish</span>
-    <span>Browse your session history</span>
-    <span>Track your dictation momentum</span>
+  <div class="hero-carousel-captions" aria-live="polite">
+    <span class="hero-carousel-caption is-active">Speak, transcribe, polish</span>
+    <span class="hero-carousel-caption">Browse your session history</span>
+    <span class="hero-carousel-caption">Track your dictation momentum</span>
   </div>
-  <div class="hero-carousel-dots">
-    <span></span>
-    <span></span>
-    <span></span>
+  <div class="hero-carousel-dots" aria-label="Choose a screenshot">
+    <button class="hero-carousel-dot is-active" type="button" aria-label="Show screenshot 1" aria-pressed="true"></button>
+    <button class="hero-carousel-dot" type="button" aria-label="Show screenshot 2" aria-pressed="false"></button>
+    <button class="hero-carousel-dot" type="button" aria-label="Show screenshot 3" aria-pressed="false"></button>
+  </div>
+  <p class="hero-carousel-hint">Tap or click a screenshot to enlarge it. Use arrow keys to browse and Escape to close.</p>
+</div>
+
+<div class="hero-lightbox" hidden>
+  <button class="hero-lightbox__backdrop" type="button" aria-label="Close enlarged screenshot"></button>
+  <div class="hero-lightbox__frame" role="dialog" aria-modal="true" aria-labelledby="hero-lightbox-caption">
+    <button class="hero-lightbox-close" type="button" aria-label="Close enlarged screenshot">Close</button>
+    <img src="" alt="">
+    <p id="hero-lightbox-caption" class="hero-lightbox-caption"></p>
   </div>
 </div>
 
@@ -81,8 +97,8 @@ Every session saves audio, raw transcript, and polished output. Replay or re-pro
 
 - [Getting Started](guides/getting-started.md)
 - [How It Works](guides/how-it-works.md)
-- [Menu and Settings](guides/menu-and-settings.md)
 - [Providers and Models](guides/providers.md)
+- [UI Reference](reference/ui-reference.md)
 
 </div>
 
