@@ -104,7 +104,7 @@
 - When running commit commands via `zsh -lic`, do not wrap the entire command payload in single quotes.
 - Use a quote-safe pattern and avoid apostrophes in commit body text.
 - After each commit, verify formatting with `git log -1 --pretty=medium`.
-- When Stefan asks for a commit, treat that as approval to push the resulting commit to the current branch unless he explicitly says to keep it local.
+- Push each commit to the current branch after creating it unless Stefan explicitly says to keep it local.
 - After each push, report the branch name, commit SHA, and relevant verification status.
 - Do not amend or rewrite prior commits unless explicitly requested.
 - Do not force-push, amend pushed commits, or push unrelated local changes unless Stefan explicitly requests it.
