@@ -436,11 +436,15 @@ final class AppShell: ObservableObject {
     }
 
     func openAccessibilityPrivacySettings() {
-        openPrivacySettings(anchor: "Privacy_Accessibility")
+        openSystemSettings(path: "com.apple.preference.security?Privacy_Accessibility")
     }
 
     func openMicrophonePrivacySettings() {
-        openPrivacySettings(anchor: "Privacy_Microphone")
+        openSystemSettings(path: "com.apple.preference.security?Privacy_Microphone")
+    }
+
+    func openSoundInputSettings() {
+        openSystemSettings(path: "com.apple.Sound-Settings.extension?input")
     }
 
     func refreshPermissionState() {
@@ -1552,8 +1556,8 @@ final class AppShell: ObservableObject {
         }
     }
 
-    private func openPrivacySettings(anchor: String) {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)") else {
+    private func openSystemSettings(path: String) {
+        guard let url = URL(string: "x-apple.systempreferences:\(path)") else {
             return
         }
         NSWorkspace.shared.open(url)

@@ -159,21 +159,33 @@ struct PopoverView: View {
     // MARK: Control Bar
 
     private static let transcriptPanelHeight: CGFloat = 120
+    private static let controlBarTransportButtonWidth: CGFloat = 40
+    private static let controlBarTransportButtonHeight: CGFloat = 34
+    private static let controlBarMeterWidth: CGFloat = 118
+    private static let controlBarMeterTrackWidth: CGFloat = 98
+    private static let controlBarMeterHeight: CGFloat = 8
+    private static let controlBarAccessoryButtonSize: CGFloat = 28
+    private static let controlBarFieldCornerRadius: CGFloat = 9
+    private static let controlBarFieldStrokeOpacity: CGFloat = 0.08
+    private static let devicePickerChevronInset: CGFloat = 5
+    private static let devicePickerChevronReservedWidth: CGFloat = 42
+    private static let devicePickerChevronHeight: CGFloat = 22
+    private static let devicePickerChevronSlotWidth: CGFloat = 28
+    private static let devicePickerChevronSlotHeight: CGFloat = 24
 
     private var controlBar: some View {
-        HStack(spacing: 8) {
-            Button(startStopButtonLabel) {
-                shell.toggleRecording()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(startStopButtonDisabled)
-            .instantHint(startStopHelpText, hoverHint: $hoverHint)
+        HStack(spacing: 10) {
+            transportButton
 
             levelMeter
-                .frame(width: 80, height: 6)
+                .frame(width: Self.controlBarMeterWidth, height: Self.controlBarTransportButtonHeight)
+                .accessibilityLabel("Recording input level")
+                .instantHint("Monitor recording input level", hoverHint: $hoverHint)
 
             devicePicker
+                .frame(height: Self.controlBarTransportButtonHeight)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
 
             if shell.permissionState != .authorized {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -182,37 +194,7 @@ struct PopoverView: View {
                     .help(permissionWarningText)
             }
 
-            Spacer(minLength: 0)
-
-            Button {
-                if let audioURL = shell.currentSession?.paths.audioURL {
-                    playbackManager.toggle(url: audioURL)
-                }
-            } label: {
-                Image(systemName: playbackManager.isPlaying ? "stop.fill" : "play.fill")
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(playbackManager.isPlaying ? "Stop audio" : "Play audio")
-            .opacity(hasAudioFile ? 1 : 0)
-            .disabled(!hasAudioFile)
-            .instantHint(
-                playbackManager.isPlaying ? "Stop audio playback" : "Play session audio",
-                hoverHint: $hoverHint
-            )
-
-            Button {
-                shell.revealCurrentSessionInFinder()
-            } label: {
-                Image(systemName: "folder")
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Reveal in Finder")
-            .contextMenu {
-                Button("Copy Session Path") {
-                    shell.copyCurrentSessionPath()
-                }
-            }
-            .instantHint("Reveal session in Finder (right-click to copy path)", hoverHint: $hoverHint)
+            controlBarAccessoryButtons
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -226,49 +208,208 @@ struct PopoverView: View {
         )
     }
 
+    private var transportButton: some View {
+        Button {
+            shell.toggleRecording()
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 11)
+                    .fill(transportButtonTint.opacity(startStopButtonDisabled ? 0.10 : 0.14))
+
+                RoundedRectangle(cornerRadius: 11)
+                    .stroke(transportButtonTint.opacity(startStopButtonDisabled ? 0.10 : 0.22), lineWidth: 1)
+
+                if transportShowsProgress {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.secondary)
+                } else {
+                    Image(systemName: transportButtonSymbolName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(startStopButtonDisabled ? .secondary : transportButtonTint)
+                }
+            }
+            .frame(
+                width: Self.controlBarTransportButtonWidth,
+                height: Self.controlBarTransportButtonHeight
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(startStopButtonDisabled)
+        .accessibilityLabel(transportButtonAccessibilityLabel)
+        .instantHint(transportButtonHelpText, hoverHint: $hoverHint)
+    }
+
     private var hasAudioFile: Bool {
         guard let audioURL = shell.currentSession?.paths.audioURL else { return false }
         return FileManager.default.fileExists(atPath: audioURL.path)
     }
 
+    private var controlBarAccessoryButtons: some View {
+        HStack(spacing: 6) {
+            soundInputSettingsButton
+            playbackButton
+            revealSessionButton
+        }
+    }
+
+    private var soundInputSettingsButton: some View {
+        Button {
+            shell.openSoundInputSettings()
+        } label: {
+            controlBarAccessoryLabel(systemName: "slider.horizontal.3")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open Sound Input settings")
+        .instantHint("Open macOS Sound Input settings", hoverHint: $hoverHint)
+    }
+
+    private var playbackButton: some View {
+        Button {
+            if let audioURL = shell.currentSession?.paths.audioURL {
+                playbackManager.toggle(url: audioURL)
+            }
+        } label: {
+            controlBarAccessoryLabel(
+                systemName: playbackManager.isPlaying ? "stop.fill" : "play.fill",
+                isEnabled: hasAudioFile
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(playbackManager.isPlaying ? "Stop audio" : "Play audio")
+        .disabled(!hasAudioFile)
+        .instantHint(playbackHelpText, hoverHint: $hoverHint)
+    }
+
+    private var revealSessionButton: some View {
+        Button {
+            shell.revealCurrentSessionInFinder()
+        } label: {
+            controlBarAccessoryLabel(systemName: "folder")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reveal in Finder")
+        .contextMenu {
+            Button("Copy Session Path") {
+                shell.copyCurrentSessionPath()
+            }
+        }
+        .instantHint("Reveal session in Finder (right-click to copy path)", hoverHint: $hoverHint)
+    }
+
+    private var playbackHelpText: String {
+        if hasAudioFile {
+            return playbackManager.isPlaying ? "Stop audio playback" : "Play session audio"
+        }
+        return "Playback becomes available after a recording is saved"
+    }
+
     private var levelMeter: some View {
-        GeometryReader { geometry in
+        controlBarField {
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Color.gray.opacity(0.18))
 
                 Capsule()
                     .fill(shell.microphoneIndicatorColorName == "green" ? Color.green : Color.gray)
-                    .frame(width: max(4, CGFloat(shell.meterLevel) * geometry.size.width))
+                    .frame(width: max(4, CGFloat(shell.meterLevel) * Self.controlBarMeterTrackWidth))
             }
+            .frame(width: Self.controlBarMeterTrackWidth, height: Self.controlBarMeterHeight)
         }
     }
 
     private var devicePicker: some View {
-        Menu {
-            Button("Automatic") {
-                shell.setSessionMicrophoneOverride(nil)
-            }
-            Divider()
-            ForEach(shell.availableMicrophones) { device in
-                Button(device.name) {
-                    shell.setSessionMicrophoneOverride(device.id)
+        controlBarField(fill: Color(NSColor.textBackgroundColor)) {
+            Menu {
+                Button("Automatic") {
+                    shell.setSessionMicrophoneOverride(nil)
                 }
+                Divider()
+                ForEach(shell.availableMicrophones) { device in
+                    Button(device.name) {
+                        shell.setSessionMicrophoneOverride(device.id)
+                    }
+                }
+            } label: {
+                devicePickerLabel
             }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "mic")
-                    .font(.caption2)
-                Text(controlBarDeviceName)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .foregroundStyle(.secondary)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
+        .overlay(alignment: .trailing) { devicePickerChevron }
+        .frame(maxWidth: .infinity)
         .instantHint("Change recording input device", hoverHint: $hoverHint)
+    }
+
+    private var devicePickerLabel: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "mic")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(controlBarDeviceName)
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, Self.devicePickerChevronReservedWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var devicePickerChevron: some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(Color.primary.opacity(Self.controlBarFieldStrokeOpacity))
+                .frame(width: 1, height: Self.devicePickerChevronHeight)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.92))
+
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.primary.opacity(Self.controlBarFieldStrokeOpacity), lineWidth: 1)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: Self.devicePickerChevronSlotWidth, height: Self.devicePickerChevronSlotHeight)
+        }
+        .padding(.trailing, Self.devicePickerChevronInset)
+        .allowsHitTesting(false)
+    }
+
+    private func controlBarField<Content: View>(
+        fill: Color = Color(NSColor.textBackgroundColor).opacity(0.5),
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Self.controlBarFieldCornerRadius)
+                .fill(fill)
+
+            RoundedRectangle(cornerRadius: Self.controlBarFieldCornerRadius)
+                .stroke(Color.primary.opacity(Self.controlBarFieldStrokeOpacity), lineWidth: 1)
+
+            content()
+        }
+    }
+
+    private func controlBarAccessoryLabel(systemName: String, isEnabled: Bool = true) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(NSColor.textBackgroundColor).opacity(isEnabled ? 0.5 : 0.28))
+
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(isEnabled ? 0.05 : 0.03), lineWidth: 1)
+
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isEnabled ? .secondary : .tertiary)
+        }
+        .frame(width: Self.controlBarAccessoryButtonSize, height: Self.controlBarAccessoryButtonSize)
     }
 
     private var controlBarDeviceName: String {
@@ -870,6 +1011,13 @@ struct PopoverView: View {
 
             Spacer()
 
+            if shell.selectedPopoverTab == .live {
+                Text(startStopFooterHint)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+
             Button("Settings") {
                 openSettings()
             }
@@ -1167,14 +1315,14 @@ struct PopoverView: View {
         }
     }
 
-    private var startStopButtonLabel: String {
+    private var transportButtonAccessibilityLabel: String {
         switch shell.sessionState {
         case .recording:
-            return "Stop (\(startStopHotkeyDisplay))"
+            return "Stop recording"
         case .finalizingAudio, .transcribing, .polishing:
-            return "Processing..."
+            return "Processing current recording"
         case .idle, .completed, .failed:
-            return "Start (\(startStopHotkeyDisplay))"
+            return "Start recording"
         }
     }
 
@@ -1198,8 +1346,50 @@ struct PopoverView: View {
         HotkeyDisplay.string(for: shell.settings.openSettingsHotkey)
     }
 
-    private var startStopHelpText: String {
-        "Toggle recording (\(startStopHotkeyDisplay))"
+    private var transportButtonSymbolName: String {
+        switch shell.sessionState {
+        case .recording:
+            return "stop.fill"
+        case .idle, .completed, .failed:
+            return "circle.fill"
+        case .finalizingAudio, .transcribing, .polishing:
+            return "circle.fill"
+        }
+    }
+
+    private var transportShowsProgress: Bool {
+        switch shell.sessionState {
+        case .finalizingAudio, .transcribing, .polishing:
+            return true
+        case .idle, .recording, .completed, .failed:
+            return false
+        }
+    }
+
+    private var transportButtonTint: Color {
+        switch shell.sessionState {
+        case .recording:
+            return .red
+        case .finalizingAudio, .transcribing, .polishing:
+            return .gray
+        case .idle, .completed, .failed:
+            return .red
+        }
+    }
+
+    private var transportButtonHelpText: String {
+        switch shell.sessionState {
+        case .recording:
+            return "Stop recording"
+        case .finalizingAudio, .transcribing, .polishing:
+            return "Recording is processing"
+        case .idle, .completed, .failed:
+            return "Start recording"
+        }
+    }
+
+    private var startStopFooterHint: String {
+        "\(startStopHotkeyDisplay) toggles recording"
     }
 
     private var copyPolishedHelpText: String {
