@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: March 6, 2026_
+_Last updated: March 7, 2026_
 
 This is the canonical roadmap summary for OpenScribe.
 
@@ -43,10 +43,8 @@ Roadmap execution is tracked in GitHub Issues.
 ### R5. Documentation Pyramid and Agent-Facing Docs Skill
 
 - Status: In progress.
-- Implemented baseline: docs landing, product section, guides, reference docs, and docs visual review automation are live.
-- Open tickets:
-  [#11 Capture matching light and dark docs screenshots](https://github.com/streichsbaer/openscribe/issues/11),
-  [#15 Add agent-facing docs Q and A skill](https://github.com/streichsbaer/openscribe/issues/15)
+- Implemented baseline: docs landing, product section, guides, reference docs, theme-aware light and dark screenshots, and docs visual review automation are live.
+- Open ticket: [#15 Add agent-facing docs Q and A skill](https://github.com/streichsbaer/openscribe/issues/15)
 
 ### R6. Per-Recording Temporary Instructions
 
