@@ -6,6 +6,8 @@
     <string>OpenScribe</string>
     <key>CFBundleDisplayName</key>
     <string>OpenScribe</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.streichsbaer.openscribe</string>
     <key>CFBundleExecutable</key>

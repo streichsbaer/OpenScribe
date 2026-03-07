@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 APP_NAME="OpenScribe"
 PLIST_PATH="Sources/OpenScribe/Resources/AppInfo.plist"
+ICON_PATH="Sources/OpenScribe/Resources/AppIcon.icns"
 
 OUT_DIR="$ROOT_DIR/dist"
 if [[ $# -gt 0 ]]; then
@@ -14,6 +15,10 @@ fi
 
 if [[ ! -f "$PLIST_PATH" ]]; then
   echo "Missing plist at $PLIST_PATH" >&2
+  exit 1
+fi
+if [[ ! -f "$ICON_PATH" ]]; then
+  echo "Missing app icon at $ICON_PATH" >&2
   exit 1
 fi
 
@@ -46,6 +51,10 @@ mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$PLIST_PATH" "$APP_DIR/Contents/Info.plist"
 cp "$EXECUTABLE" "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+cp "$ICON_PATH" "$APP_DIR/Contents/Resources/AppIcon.icns"
+
+codesign --force --deep --sign - "$APP_DIR"
+codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 
 ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP_PATH"
 
