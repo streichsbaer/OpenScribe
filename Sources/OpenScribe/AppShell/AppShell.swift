@@ -1504,22 +1504,12 @@ final class AppShell: ObservableObject {
 
     private func apiKeyStatusDescription(for entry: KeychainEntry) -> String {
         let resolution = apiKeyResolver.resolve(entry)
-        let environmentSummary = entry.environmentVariableNames.joined(separator: " or ")
 
         switch resolution.source {
         case .keychain:
-            if resolution.environmentPresent {
-                if let matched = resolution.environmentVariableNameUsed {
-                    return "\(entry.providerDisplayName): using saved Keychain key (overrides \(matched))."
-                }
-                return "\(entry.providerDisplayName): using saved Keychain key (overrides environment key)."
-            }
             return "\(entry.providerDisplayName): using saved Keychain key."
-        case .environment:
-            let matched = resolution.environmentVariableNameUsed ?? environmentSummary
-            return "\(entry.providerDisplayName): using \(matched) from environment. Save a key above to override."
         case .missing:
-            return "\(entry.providerDisplayName): no API key in Keychain or \(environmentSummary)."
+            return "\(entry.providerDisplayName): no saved API key."
         }
     }
 

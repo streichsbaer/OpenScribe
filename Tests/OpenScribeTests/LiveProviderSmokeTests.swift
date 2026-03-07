@@ -4,6 +4,8 @@ import XCTest
 
 @MainActor
 final class LiveProviderSmokeTests: XCTestCase {
+    private let keychain = KeychainStore()
+
     func testLiveProviderPipelineWithTTSAudio() async throws {
         let env = ProcessInfo.processInfo.environment
         guard env["RUN_LIVE_PROVIDER_SMOKE"] == "1" else {
@@ -15,7 +17,7 @@ final class LiveProviderSmokeTests: XCTestCase {
 
         let sttProviderID = try requiredEnv("LIVE_SMOKE_STT_PROVIDER", in: env)
         let sttModel = try requiredEnv("LIVE_SMOKE_STT_MODEL", in: env)
-        let sttProvider = try transcriptionProvider(id: sttProviderID, env: env)
+        let sttProvider = try transcriptionProvider(id: sttProviderID)
 
         let transcript = try await sttProvider.transcribe(
             audioFileURL: audioURL,
@@ -36,7 +38,7 @@ final class LiveProviderSmokeTests: XCTestCase {
 
         let polishProviderID = try requiredEnv("LIVE_SMOKE_POLISH_PROVIDER", in: env)
         let polishModel = try requiredEnv("LIVE_SMOKE_POLISH_MODEL", in: env)
-        let polishProvider = try polishProvider(id: polishProviderID, env: env)
+        let polishProvider = try polishProvider(id: polishProviderID)
 
         let polished = try await polishProvider.polish(
             rawText: rawText,
@@ -71,41 +73,40 @@ final class LiveProviderSmokeTests: XCTestCase {
         return value
     }
 
-    private func transcriptionProvider(id: String, env: [String: String]) throws -> any TranscriptionProvider {
+    private func transcriptionProvider(id: String) throws -> any TranscriptionProvider {
         switch id {
         case "openai_whisper":
-            return OpenAIWhisperProvider(apiKey: try apiKey(for: .openAI, env: env))
+            return OpenAIWhisperProvider(apiKey: try apiKey(for: .openAI))
         case "groq_whisper":
-            return GroqWhisperProvider(apiKey: try apiKey(for: .groq, env: env))
+            return GroqWhisperProvider(apiKey: try apiKey(for: .groq))
         case "openrouter_transcribe":
-            return OpenRouterTranscriptionProvider(apiKey: try apiKey(for: .openRouter, env: env))
+            return OpenRouterTranscriptionProvider(apiKey: try apiKey(for: .openRouter))
         case "gemini_transcribe":
-            return GeminiTranscriptionProvider(apiKey: try apiKey(for: .gemini, env: env))
+            return GeminiTranscriptionProvider(apiKey: try apiKey(for: .gemini))
         default:
             throw ProviderError.unsupported("Unsupported live smoke transcription provider: \(id)")
         }
     }
 
-    private func polishProvider(id: String, env: [String: String]) throws -> any PolishProvider {
+    private func polishProvider(id: String) throws -> any PolishProvider {
         switch id {
         case "openai_polish":
-            return OpenAIPolishProvider(apiKey: try apiKey(for: .openAI, env: env))
+            return OpenAIPolishProvider(apiKey: try apiKey(for: .openAI))
         case "groq_polish":
-            return GroqPolishProvider(apiKey: try apiKey(for: .groq, env: env))
+            return GroqPolishProvider(apiKey: try apiKey(for: .groq))
         case "openrouter_polish":
-            return OpenRouterPolishProvider(apiKey: try apiKey(for: .openRouter, env: env))
+            return OpenRouterPolishProvider(apiKey: try apiKey(for: .openRouter))
         case "gemini_polish":
-            return GeminiPolishProvider(apiKey: try apiKey(for: .gemini, env: env))
+            return GeminiPolishProvider(apiKey: try apiKey(for: .gemini))
         default:
             throw ProviderError.unsupported("Unsupported live smoke polish provider: \(id)")
         }
     }
 
-    private func apiKey(for entry: KeychainEntry, env: [String: String]) throws -> String {
-        for keyName in entry.environmentVariableNames {
-            if let value = env[keyName]?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
-                return value
-            }
+    private func apiKey(for entry: KeychainEntry) throws -> String {
+        if let value = keychain.load(entry)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !value.isEmpty {
+            return value
         }
         throw ProviderError.missingAPIKey(entry.providerDisplayName)
     }

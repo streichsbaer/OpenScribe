@@ -48,6 +48,7 @@ Polish is disabled by default. Enable it in Settings > Polish.
 5. Select your preferred polish provider and model in Settings > Polish.
 
 API keys are stored in the macOS Keychain.
+App updates do not clear those saved keys for the same macOS user account.
 
 ## Choose a model deliberately
 
