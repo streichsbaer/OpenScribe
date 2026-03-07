@@ -20,7 +20,7 @@ Open OpenScribe from Applications and grant microphone access when macOS prompts
 
 The raw transcript appears first. If polish is enabled, the polished version appears below it in the same view.
 
-![Live tab after a recording](../images/ui/openscribe-live.png){ .guide-shot }
+![Live tab after a recording](/images/ui/openscribe-live.png){ .guide-shot data-light-src="/images/ui/openscribe-live.png" data-dark-src="/images/ui/openscribe-live-dark.png" }
 
 If you do not see any text after stopping, check the menu bar icon state. A no-audio icon usually means macOS recorded silence or the wrong microphone.
 

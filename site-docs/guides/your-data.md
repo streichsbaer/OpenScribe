@@ -6,11 +6,11 @@ OpenScribe stores its working files locally on your Mac. Nothing is synced anywh
 
 If you want to revisit a past session, start in the History tab. Each row can replay the recording, re-run processing, or reveal the session folder in Finder.
 
-![History tab with session list](../images/ui/openscribe-history.png){ .guide-shot }
+![History tab with session list](/images/ui/openscribe-history.png){ .guide-shot data-light-src="/images/ui/openscribe-history.png" data-dark-src="/images/ui/openscribe-history-dark.png" }
 
 If you want the top-level app folder, model management, or cleanup actions, open Settings > Data.
 
-![Data settings tab](../images/ui/settings-data.png){ .guide-shot }
+![Data settings tab](/images/ui/settings-data.png){ .guide-shot data-light-src="/images/ui/settings-data.png" data-dark-src="/images/ui/settings-data-dark.png" }
 
 ## Where data lives
 

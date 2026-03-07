@@ -217,7 +217,6 @@ final class StatusBarController: NSObject {
         let hotkeyStatsImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-stats.png")
         let hotkeyLiveImageURL = outputDirectory.appendingPathComponent("openscribe-window-hotkey-live.png")
         let liveExpandedContentImageURL = outputDirectory.appendingPathComponent("openscribe-window-live-expanded-content.png")
-        let settingsImageURL = outputDirectory.appendingPathComponent("settings-window.png")
         let debugURL = outputDirectory.appendingPathComponent("ui-smoke-debug.txt")
 
         var popoverStatus = "fail"
@@ -233,6 +232,10 @@ final class StatusBarController: NSObject {
         var historyVerticalFillReason = "not-evaluated"
         var liveExpandedContentCaptureStatus = "fail"
         var settingsStatus = "fail"
+        var settingsLightStatus = "fail"
+        var settingsDarkStatus = "fail"
+        var settingsLightTabsStatus = "fail"
+        var settingsDarkTabsStatus = "fail"
         var iconStatus = "fail"
         var debugLines: [String] = []
         debugLines.append("statusButton=\(statusItem.button != nil)")
@@ -544,41 +547,20 @@ final class StatusBarController: NSObject {
         }
         hotkeyTabsStatus = hotkeyCaptureFailures == 0 ? "pass" : "missing:\(hotkeyCaptureFailures)"
 
-        openSettings()
-        settingsWindowController.moveToPreferredCaptureScreen()
-        try? await Task.sleep(nanoseconds: 700_000_000)
-        if let settingsView = settingsWindowController.window?.contentView {
-            let b = settingsView.bounds
-            debugLines.append("settingsBounds=\(Int(b.width))x\(Int(b.height))")
-        } else {
-            debugLines.append("settingsBounds=missing")
-        }
-        if let screen = settingsWindowController.window?.screen {
-            debugLines.append("settingsCaptureScreen=\(screen.localizedName)@\(screen.backingScaleFactor)x")
-        } else {
-            debugLines.append("settingsCaptureScreen=missing")
-        }
-        if captureViewSnapshot(settingsWindowController.window?.contentView, to: settingsImageURL) {
-            settingsStatus = "pass"
-            debugLines.append("settingsCapture=pass")
-        } else {
-            debugLines.append("settingsCapture=fail")
-        }
+        let settingsCapture = await captureSettingsSnapshots(outputDirectory: outputDirectory, debugLines: &debugLines)
+        settingsLightStatus = settingsCapture.lightWindowCaptured ? "pass" : "fail"
+        settingsDarkStatus = settingsCapture.darkWindowCaptured ? "pass" : "fail"
+        settingsLightTabsStatus = settingsCapture.lightTabFailures == 0
+            ? "pass"
+            : "missing:\(settingsCapture.lightTabFailures)"
+        settingsDarkTabsStatus = settingsCapture.darkTabFailures == 0
+            ? "pass"
+            : "missing:\(settingsCapture.darkTabFailures)"
 
-        var tabCaptureFailures = 0
-        for tab in SettingsTab.allCases {
-            settingsWindowController.selectTab(tab)
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            settingsWindowController.moveToPreferredCaptureScreen()
-            let tabURL = outputDirectory.appendingPathComponent("settings-\(tab.rawValue).png")
-            if captureViewSnapshot(settingsWindowController.window?.contentView, to: tabURL) {
-                debugLines.append("settingsTab[\(tab.rawValue)]=pass")
-            } else {
-                tabCaptureFailures += 1
-                debugLines.append("settingsTab[\(tab.rawValue)]=fail")
-            }
-        }
-        if tabCaptureFailures > 0 {
+        let tabCaptureFailures = settingsCapture.lightTabFailures + settingsCapture.darkTabFailures
+        if settingsCapture.lightWindowCaptured, settingsCapture.darkWindowCaptured, tabCaptureFailures == 0 {
+            settingsStatus = "pass"
+        } else if settingsCapture.lightWindowCaptured || settingsCapture.darkWindowCaptured {
             settingsStatus = "partial"
         }
 
@@ -602,6 +584,10 @@ final class StatusBarController: NSObject {
         historyVerticalFillReason=\(historyVerticalFillReason)
         liveExpandedContentCapture=\(liveExpandedContentCaptureStatus)
         settings=\(settingsStatus)
+        settingsLight=\(settingsLightStatus)
+        settingsDark=\(settingsDarkStatus)
+        settingsLightTabs=\(settingsLightTabsStatus)
+        settingsDarkTabs=\(settingsDarkTabsStatus)
         settingsTabsFailed=\(tabCaptureFailures)
         menubarIcons=\(iconStatus)
         menubarIconsFailed=\(iconCaptureFailures)
@@ -616,6 +602,91 @@ final class StatusBarController: NSObject {
             atomically: true,
             encoding: .utf8
         )
+    }
+
+    private struct SettingsSnapshotVariant {
+        let suffix: String
+        let debugTag: String
+        let mode: AppearanceMode
+    }
+
+    private struct SettingsCaptureSummary {
+        var lightWindowCaptured = false
+        var darkWindowCaptured = false
+        var lightTabFailures = 0
+        var darkTabFailures = 0
+    }
+
+    private func captureSettingsSnapshots(
+        outputDirectory: URL,
+        debugLines: inout [String]
+    ) async -> SettingsCaptureSummary {
+        let variants: [SettingsSnapshotVariant] = [
+            SettingsSnapshotVariant(suffix: "", debugTag: "light", mode: .light),
+            SettingsSnapshotVariant(suffix: "-dark", debugTag: "dark", mode: .dark)
+        ]
+        let originalMode = currentAppearanceMode
+        var summary = SettingsCaptureSummary()
+
+        openSettings()
+        settingsWindowController.moveToPreferredCaptureScreen()
+        try? await Task.sleep(nanoseconds: 700_000_000)
+        if let settingsView = settingsWindowController.window?.contentView {
+            let bounds = settingsView.bounds
+            debugLines.append("settingsBounds=\(Int(bounds.width))x\(Int(bounds.height))")
+        } else {
+            debugLines.append("settingsBounds=missing")
+        }
+        if let screen = settingsWindowController.window?.screen {
+            debugLines.append("settingsCaptureScreen=\(screen.localizedName)@\(screen.backingScaleFactor)x")
+        } else {
+            debugLines.append("settingsCaptureScreen=missing")
+        }
+
+        for variant in variants {
+            currentAppearanceMode = variant.mode
+            applyAppearanceSettings()
+            applySettingsWindowAppearance(for: variant.mode)
+            settingsWindowController.selectTab(.general)
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            settingsWindowController.moveToPreferredCaptureScreen()
+
+            let settingsImageURL = outputDirectory.appendingPathComponent("settings-window\(variant.suffix).png")
+            let windowCaptured = captureViewSnapshot(settingsWindowController.window?.contentView, to: settingsImageURL)
+            debugLines.append("settingsCapture[\(variant.debugTag)]=\(windowCaptured ? "pass" : "fail")")
+
+            var tabFailures = 0
+            for tab in SettingsTab.allCases {
+                settingsWindowController.selectTab(tab)
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                settingsWindowController.moveToPreferredCaptureScreen()
+                applySettingsWindowAppearance(for: variant.mode)
+
+                let tabURL = outputDirectory.appendingPathComponent("settings-\(tab.rawValue)\(variant.suffix).png")
+                if captureViewSnapshot(settingsWindowController.window?.contentView, to: tabURL) {
+                    debugLines.append("settingsTab[\(variant.debugTag)/\(tab.rawValue)]=pass")
+                } else {
+                    tabFailures += 1
+                    debugLines.append("settingsTab[\(variant.debugTag)/\(tab.rawValue)]=fail")
+                }
+            }
+
+            switch variant.mode {
+            case .light:
+                summary.lightWindowCaptured = windowCaptured
+                summary.lightTabFailures = tabFailures
+            case .dark:
+                summary.darkWindowCaptured = windowCaptured
+                summary.darkTabFailures = tabFailures
+            case .system:
+                break
+            }
+        }
+
+        currentAppearanceMode = originalMode
+        applyAppearanceSettings()
+        applySettingsWindowAppearance(for: originalMode)
+        return summary
     }
 
     private func captureMenubarIconSnapshots(outputDirectory: URL, debugLines: inout [String]) -> Int {
@@ -697,6 +768,14 @@ final class StatusBarController: NSObject {
         } catch {
             return false
         }
+    }
+
+    private func applySettingsWindowAppearance(for mode: AppearanceMode) {
+        let appearance = nsAppearance(for: mode)
+        settingsWindowController.window?.appearance = appearance
+        settingsWindowController.window?.contentView?.appearance = appearance
+        settingsWindowController.window?.contentViewController?.view.appearance = appearance
+        settingsWindowController.window?.displayIfNeeded()
     }
 
     private func showPopoverForUISmoke() -> Bool {

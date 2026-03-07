@@ -20,7 +20,9 @@ zsh .agents/skills/ui-smoke/scripts/run.sh --out artifacts/ui-smoke/latest
 - `ui-smoke-debug.txt`
 - `openscribe-window.png`
 - `settings-window.png`
+- `settings-window-dark.png`
 - `settings-<tab>.png` for all tabs
+- `settings-<tab>-dark.png` for all tabs
 - `menubar-icon-<mode>-<state>.png` for all icon-state snapshots
 - Popover parity artifacts from `docs/popover-spec.md`:
   - `openscribe-window-click-history.png`
@@ -30,7 +32,7 @@ zsh .agents/skills/ui-smoke/scripts/run.sh --out artifacts/ui-smoke/latest
   - `openscribe-window-hotkey-live.png`
   - `openscribe-window-live-expanded-content.png`
 
-Settings screenshots are the docs refresh candidates and should be captured on the built-in Retina display when available. Popover smoke screenshots remain regression-only artifacts. The published docs reuse the curated assets in `site-docs/images/ui/openscribe-*.png`.
+Settings screenshots are the docs refresh candidates and should be captured on the built-in Retina display when available in both light and dark appearances. Popover smoke screenshots remain regression-only artifacts. The published docs reuse curated assets in `site-docs/images/ui/`.
 
 The smoke script exits non-zero if required artifacts are missing.
 

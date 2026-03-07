@@ -2,7 +2,7 @@
 
 Every OpenScribe session follows the same path: record, transcribe, polish. Once you know that loop, the app becomes easy to read because the menu bar icon and the Live tab are always telling you where the current session is.
 
-![Live tab showing raw and polished output](../images/ui/openscribe-live.png){ .guide-shot }
+![Live tab showing raw and polished output](/images/ui/openscribe-live.png){ .guide-shot data-light-src="/images/ui/openscribe-live.png" data-dark-src="/images/ui/openscribe-live-dark.png" }
 
 ## 1. Record first
 

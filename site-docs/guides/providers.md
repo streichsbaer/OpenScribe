@@ -2,7 +2,7 @@
 
 OpenScribe lets you mix local and cloud providers depending on how you want the app to behave. A simple setup can stay fully local. A more flexible setup can add cloud models for transcription, polish, or both.
 
-![Providers settings tab](../images/ui/settings-providers.png){ .guide-shot }
+![Providers settings tab](/images/ui/settings-providers.png){ .guide-shot data-light-src="/images/ui/settings-providers.png" data-dark-src="/images/ui/settings-providers-dark.png" }
 
 ## Start with transcription
 
@@ -37,7 +37,7 @@ Polish runs a language model on your raw transcript to improve grammar, formatti
 
 Polish is disabled by default. Enable it in Settings > Polish.
 
-![Transcribe settings tab](../images/ui/settings-transcribe.png){ .guide-shot }
+![Transcribe settings tab](/images/ui/settings-transcribe.png){ .guide-shot data-light-src="/images/ui/settings-transcribe.png" data-dark-src="/images/ui/settings-transcribe-dark.png" }
 
 ## Add your keys, then refresh models
 

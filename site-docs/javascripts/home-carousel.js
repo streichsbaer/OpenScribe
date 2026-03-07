@@ -1,5 +1,55 @@
 (() => {
   const INTERVAL_MS = 5000;
+  const THEME_IMAGE_SELECTOR = "img[data-light-src][data-dark-src]";
+  const THEME_IMAGE_CHANGE_EVENT = "openscribe:theme-images-changed";
+
+  const isDarkMode = () => document.body?.dataset.mdColorScheme === "slate";
+
+  const syncThemeImage = (image) => {
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+
+    const nextSrc = isDarkMode() ? image.dataset.darkSrc : image.dataset.lightSrc;
+
+    if (nextSrc && image.getAttribute("src") !== nextSrc) {
+      image.src = nextSrc;
+    }
+  };
+
+  const syncThemeImages = (root = document) => {
+    const images = [];
+
+    if (root instanceof HTMLImageElement && root.matches(THEME_IMAGE_SELECTOR)) {
+      images.push(root);
+    }
+
+    if ("querySelectorAll" in root) {
+      images.push(...root.querySelectorAll(THEME_IMAGE_SELECTOR));
+    }
+
+    images.forEach(syncThemeImage);
+  };
+
+  const initThemeManagedImages = () => {
+    if (!document.body || document.body.dataset.themeManagedImagesReady === "true") {
+      return;
+    }
+
+    document.body.dataset.themeManagedImagesReady = "true";
+
+    const syncAndNotify = () => {
+      syncThemeImages();
+      document.dispatchEvent(new CustomEvent(THEME_IMAGE_CHANGE_EVENT));
+    };
+
+    new MutationObserver(syncAndNotify).observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-md-color-scheme"]
+    });
+
+    syncAndNotify();
+  };
 
   const initHomeCarousel = () => {
     const carousel = document.querySelector(".hero-carousel");
@@ -38,23 +88,6 @@
     let restoreFocusTarget = null;
 
     const isLightboxOpen = () => !lightbox.hidden;
-    const isDarkMode = () => document.body.dataset.mdColorScheme === "slate";
-
-    const syncThemeImages = () => {
-      const useDarkImages = isDarkMode();
-
-      slideImages.forEach((image) => {
-        const nextSrc = useDarkImages ? image.dataset.darkSrc : image.dataset.lightSrc;
-
-        if (nextSrc && image.getAttribute("src") !== nextSrc) {
-          image.src = nextSrc;
-        }
-      });
-
-      if (isLightboxOpen()) {
-        syncLightbox();
-      }
-    };
 
     const getFocusableElements = () =>
       Array.from(
@@ -270,19 +303,25 @@
       }
     });
 
-    new MutationObserver(syncThemeImages).observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-md-color-scheme"]
+    document.addEventListener(THEME_IMAGE_CHANGE_EVENT, () => {
+      syncThemeImages(carousel);
+      if (isLightboxOpen()) {
+        syncLightbox();
+      }
     });
 
-    syncThemeImages();
+    syncThemeImages(carousel);
     render(activeIndex);
     startAutoplay();
   };
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initHomeCarousel, { once: true });
+    document.addEventListener("DOMContentLoaded", () => {
+      initThemeManagedImages();
+      initHomeCarousel();
+    }, { once: true });
   } else {
+    initThemeManagedImages();
     initHomeCarousel();
   }
 })();

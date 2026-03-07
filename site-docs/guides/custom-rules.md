@@ -2,7 +2,7 @@
 
 Custom rules let you shape how OpenScribe rewrites your transcripts during polish. When polish is enabled, OpenScribe includes your rules file in the prompt sent to the language model.
 
-![Rules settings tab](../images/ui/settings-rules.png){ .guide-shot }
+![Rules settings tab](/images/ui/settings-rules.png){ .guide-shot data-light-src="/images/ui/settings-rules.png" data-dark-src="/images/ui/settings-rules-dark.png" }
 
 ## Start simple
 

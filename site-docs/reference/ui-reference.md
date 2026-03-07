@@ -19,31 +19,31 @@ The icon changes as your recording moves through the pipeline.
 
 OpenScribe is ready for a new recording.
 
-![Menu bar icon in idle state](../images/ui/menubar-icon-light-idle.png){ .menu-icon }
+![Menu bar icon in idle state](/images/ui/menubar-icon-light-idle.png){ .menu-icon data-light-src="/images/ui/menubar-icon-light-idle.png" data-dark-src="/images/ui/menubar-icon-dark-idle.png" }
 
 ### Recording (working)
 
 Audio capture is active and OpenScribe is receiving usable microphone input.
 
-![Menu bar icon in recording working state](../images/ui/menubar-icon-system-recording-working.png){ .menu-icon }
+![Menu bar icon in recording working state](/images/ui/menubar-icon-light-recording-working.png){ .menu-icon data-light-src="/images/ui/menubar-icon-light-recording-working.png" data-dark-src="/images/ui/menubar-icon-dark-recording-working.png" }
 
 ### Recording (no audio input)
 
 Recording is active, but OpenScribe is not receiving a usable signal.
 
-![Menu bar icon in recording no-audio state](../images/ui/menubar-icon-system-recording-no-audio.png){ .menu-icon }
+![Menu bar icon in recording no-audio state](/images/ui/menubar-icon-light-recording-no-audio.png){ .menu-icon data-light-src="/images/ui/menubar-icon-light-recording-no-audio.png" data-dark-src="/images/ui/menubar-icon-dark-recording-no-audio.png" }
 
 ### Transcribing
 
 Recording has stopped and speech-to-text is running.
 
-![Menu bar icon in transcribing state](../images/ui/menubar-icon-system-transcribing.png){ .menu-icon }
+![Menu bar icon in transcribing state](/images/ui/menubar-icon-light-transcribing.png){ .menu-icon data-light-src="/images/ui/menubar-icon-light-transcribing.png" data-dark-src="/images/ui/menubar-icon-dark-transcribing.png" }
 
 ### Polishing
 
 The raw transcript is complete and the optional polish step is running.
 
-![Menu bar icon in polishing state](../images/ui/menubar-icon-system-polishing.png){ .menu-icon }
+![Menu bar icon in polishing state](/images/ui/menubar-icon-light-polishing.png){ .menu-icon data-light-src="/images/ui/menubar-icon-light-polishing.png" data-dark-src="/images/ui/menubar-icon-dark-polishing.png" }
 
 ## Popover tabs
 
@@ -53,25 +53,25 @@ Open the popover to see the current run and browse recent sessions.
 
 The Live tab shows the active pipeline state, the current raw transcript, and the polished output when polish is enabled. You can also re-run transcription or polish here.
 
-![Live tab](../images/ui/openscribe-live.png){ .guide-shot }
+![Live tab](/images/ui/openscribe-live.png){ .guide-shot data-light-src="/images/ui/openscribe-live.png" data-dark-src="/images/ui/openscribe-live-dark.png" }
 
 ### History tab
 
 The History tab lists previous sessions and gives you quick actions to replay audio, re-run processing, or reveal the session folder in Finder.
 
-![History tab](../images/ui/openscribe-history.png){ .guide-shot }
+![History tab](/images/ui/openscribe-history.png){ .guide-shot data-light-src="/images/ui/openscribe-history.png" data-dark-src="/images/ui/openscribe-history-dark.png" }
 
 ### Stats tab
 
 The Stats tab shows usage totals, recent activity, and longer-term patterns in how you use OpenScribe.
 
-![Stats tab](../images/ui/openscribe-stats.png){ .guide-shot }
+![Stats tab](/images/ui/openscribe-stats.png){ .guide-shot data-light-src="/images/ui/openscribe-stats.png" data-dark-src="/images/ui/openscribe-stats-dark.png" }
 
 ## Settings window
 
 You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe is focused, or with the configured Open Settings hotkey.
 
-![Settings window](../images/ui/settings-window.png){ .guide-shot }
+![Settings window](/images/ui/settings-window.png){ .guide-shot data-light-src="/images/ui/settings-window.png" data-dark-src="/images/ui/settings-window-dark.png" }
 
 ### General
 
@@ -81,7 +81,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Accessibility permission status and controls.
 - Microphone selection and permission controls.
 
-![General settings tab](../images/ui/settings-general.png){ .guide-shot }
+![General settings tab](/images/ui/settings-general.png){ .guide-shot data-light-src="/images/ui/settings-general.png" data-dark-src="/images/ui/settings-general-dark.png" }
 
 ### Providers
 
@@ -89,7 +89,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Verify the current token for each provider.
 - Refresh shared provider model lists used by Transcribe and Polish.
 
-![Providers settings tab](../images/ui/settings-providers.png){ .guide-shot }
+![Providers settings tab](/images/ui/settings-providers.png){ .guide-shot data-light-src="/images/ui/settings-providers.png" data-dark-src="/images/ui/settings-providers-dark.png" }
 
 ### Transcribe
 
@@ -98,7 +98,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Language mode.
 - Optional custom transcription instruction.
 
-![Transcribe settings tab](../images/ui/settings-transcribe.png){ .guide-shot }
+![Transcribe settings tab](/images/ui/settings-transcribe.png){ .guide-shot data-light-src="/images/ui/settings-transcribe.png" data-dark-src="/images/ui/settings-transcribe-dark.png" }
 
 ### Polish
 
@@ -107,7 +107,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Full-width polish model browser.
 - Optional custom polish instruction.
 
-![Polish settings tab](../images/ui/settings-polish.png){ .guide-shot }
+![Polish settings tab](/images/ui/settings-polish.png){ .guide-shot data-light-src="/images/ui/settings-polish.png" data-dark-src="/images/ui/settings-polish-dark.png" }
 
 ### Hotkeys
 
@@ -116,14 +116,14 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Paste latest Accessibility dependency note.
 - Popover tab shortcuts.
 
-![Hotkeys settings tab](../images/ui/settings-hotkeys.png){ .guide-shot }
+![Hotkeys settings tab](/images/ui/settings-hotkeys.png){ .guide-shot data-light-src="/images/ui/settings-hotkeys.png" data-dark-src="/images/ui/settings-hotkeys-dark.png" }
 
 ### Rules
 
 - Edit the rules markdown used by polish.
 - Save, revert, or open rules in an external editor.
 
-![Rules settings tab](../images/ui/settings-rules.png){ .guide-shot }
+![Rules settings tab](/images/ui/settings-rules.png){ .guide-shot data-light-src="/images/ui/settings-rules.png" data-dark-src="/images/ui/settings-rules-dark.png" }
 
 ### Data
 
@@ -132,7 +132,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Open the App Support folder.
 - Move App Support data to Trash.
 
-![Data settings tab](../images/ui/settings-data.png){ .guide-shot }
+![Data settings tab](/images/ui/settings-data.png){ .guide-shot data-light-src="/images/ui/settings-data.png" data-dark-src="/images/ui/settings-data-dark.png" }
 
 ### About
 
@@ -140,7 +140,7 @@ You can open Settings from the right-click menu, with `Cmd + ,` when OpenScribe 
 - Current default providers.
 - Repository and governance links.
 
-![About settings tab](../images/ui/settings-about.png){ .guide-shot }
+![About settings tab](/images/ui/settings-about.png){ .guide-shot data-light-src="/images/ui/settings-about.png" data-dark-src="/images/ui/settings-about-dark.png" }
 
 ## Related docs
 

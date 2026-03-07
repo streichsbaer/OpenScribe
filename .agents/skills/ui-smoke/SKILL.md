@@ -45,14 +45,23 @@ zsh .agents/skills/ui-smoke/scripts/run.sh --out artifacts/ui-smoke/latest
 - `openscribe-window-hotkey-live.png`
 - `openscribe-window-live-expanded-content.png`
 - `settings-window.png`
+- `settings-window-dark.png`
 - `settings-general.png`
+- `settings-general-dark.png`
 - `settings-transcribe.png`
+- `settings-transcribe-dark.png`
 - `settings-polish.png`
+- `settings-polish-dark.png`
 - `settings-providers.png`
+- `settings-providers-dark.png`
 - `settings-hotkeys.png`
+- `settings-hotkeys-dark.png`
 - `settings-rules.png`
+- `settings-rules-dark.png`
 - `settings-data.png`
+- `settings-data-dark.png`
 - `settings-about.png`
+- `settings-about-dark.png`
 - `menubar-icon-<mode>-<state>.png` (18 files across 3 appearance modes and 6 icon states)
 - `ui-smoke-status.txt`
 - `ui-smoke-debug.txt`
@@ -73,7 +82,7 @@ When `--out` is set:
 1. Build app (`swift build`)
 2. Run tests (`swift test`)
 3. Launch app in smoke mode (`OPENSCRIBE_UI_SMOKE=1 swift run OpenScribe`)
-4. App captures regression popover artifacts plus settings screenshots internally.
+4. App captures regression popover artifacts plus light and dark settings screenshots internally.
 5. App captures menubar icon state snapshots for `system`, `light`, and `dark` appearances.
 6. Script validates screenshot artifacts and writes markdown report
 7. Review screenshots manually to confirm visual correctness.
@@ -82,8 +91,8 @@ When `--out` is set:
 ## Notes
 
 - Internal capture avoids transient macOS focus/automation races for popover windows.
-- Settings screenshots are moved to the built-in Retina display when available so docs assets stay crisp.
-- Popover screenshots remain smoke-only regression artifacts. Published docs reuse curated assets from `site-docs/images/ui/openscribe-*.png`.
+- Settings screenshots are moved to the built-in Retina display when available so light and dark docs assets stay crisp.
+- Popover screenshots remain smoke-only regression artifacts. Published docs reuse curated assets from `site-docs/images/ui/`.
 - The run is strict: missing required screenshots causes a failing exit code.
 - The run is strict: tab parity checks must use real segmented-control click dispatch in smoke mode.
 - The run is strict: hotkey tab checks must use real hotkey dispatch in smoke mode.

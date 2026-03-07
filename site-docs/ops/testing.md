@@ -22,17 +22,15 @@ Required artifacts live under `artifacts/ui-smoke/latest/`.
 - `ui-smoke-debug.txt`
 - `openscribe-window.png`
 - `settings-window.png`
-- `settings-general.png`
-- `settings-transcribe.png`
-- `settings-polish.png`
-- `settings-providers.png`
+- `settings-window-dark.png`
 - `settings-<tab>.png`
+- `settings-<tab>-dark.png`
 - `menubar-icon-<mode>-<state>.png`
 
 Notes:
 
-- Settings screenshots are the docs refresh candidates and should come from the built-in Retina display when available.
-- Popover smoke screenshots are regression artifacts only. Published docs reuse the curated assets in `site-docs/images/ui/openscribe-*.png`.
+- Settings screenshots are the docs refresh candidates and should come from the built-in Retina display when available in both light and dark appearances.
+- Popover smoke screenshots are regression artifacts only. Published docs reuse curated assets in `site-docs/images/ui/`.
 
 Popover parity artifacts:
 

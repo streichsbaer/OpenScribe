@@ -50,6 +50,8 @@ fi
 mkdir -p "$OUT_DIR"
 appearance_modes=(system light dark)
 icon_states=(idle recording-working recording-paused recording-no-audio transcribing polishing)
+settings_tabs=(general transcribe polish providers hotkeys rules data about)
+settings_variant_suffixes=("" "-dark")
 rm -f "$OUT_DIR"/build.log \
       "$OUT_DIR"/test.log \
       "$OUT_DIR"/run.log \
@@ -65,16 +67,13 @@ rm -f "$OUT_DIR"/build.log \
       "$OUT_DIR"/openscribe-window-hotkey-history-full.png \
       "$OUT_DIR"/openscribe-window-hotkey-stats.png \
       "$OUT_DIR"/openscribe-window-hotkey-live.png \
-      "$OUT_DIR"/openscribe-window-live-expanded-content.png \
-      "$OUT_DIR"/settings-window.png \
-      "$OUT_DIR"/settings-general.png \
-      "$OUT_DIR"/settings-transcribe.png \
-      "$OUT_DIR"/settings-polish.png \
-      "$OUT_DIR"/settings-providers.png \
-      "$OUT_DIR"/settings-hotkeys.png \
-      "$OUT_DIR"/settings-rules.png \
-      "$OUT_DIR"/settings-data.png \
-      "$OUT_DIR"/settings-about.png
+      "$OUT_DIR"/openscribe-window-live-expanded-content.png
+for suffix in "${settings_variant_suffixes[@]}"; do
+  rm -f "$OUT_DIR/settings-window$suffix.png"
+  for tab in "${settings_tabs[@]}"; do
+    rm -f "$OUT_DIR/settings-$tab$suffix.png"
+  done
+done
 for mode in "${appearance_modes[@]}"; do
   for state in "${icon_states[@]}"; do
     rm -f "$OUT_DIR/menubar-icon-$mode-$state.png"
@@ -117,6 +116,8 @@ click_history_capture_status="skipped"
 click_stats_capture_status="skipped"
 settings_capture_status="skipped"
 settings_tab_capture_status="skipped"
+settings_dark_capture_status="skipped"
+settings_dark_tab_capture_status="skipped"
 menubar_icon_capture_status="skipped"
 hotkey_tab_capture_status="skipped"
 history_layout_parity_status="missing"
@@ -145,17 +146,14 @@ if OPENSCRIBE_UI_SMOKE=1 OPENSCRIBE_UI_SMOKE_OUT="$OUT_DIR" swift run OpenScribe
     "$OUT_DIR/openscribe-window-hotkey-stats.png"
     "$OUT_DIR/openscribe-window-hotkey-live.png"
     "$OUT_DIR/openscribe-window-live-expanded-content.png"
-    "$OUT_DIR/settings-window.png"
-    "$OUT_DIR/settings-general.png"
-    "$OUT_DIR/settings-transcribe.png"
-    "$OUT_DIR/settings-polish.png"
-    "$OUT_DIR/settings-providers.png"
-    "$OUT_DIR/settings-hotkeys.png"
-    "$OUT_DIR/settings-rules.png"
-    "$OUT_DIR/settings-data.png"
-    "$OUT_DIR/settings-about.png"
     "$OUT_DIR/ui-smoke-status.txt"
   )
+  for suffix in "${settings_variant_suffixes[@]}"; do
+    expected_files+=("$OUT_DIR/settings-window$suffix.png")
+    for tab in "${settings_tabs[@]}"; do
+      expected_files+=("$OUT_DIR/settings-$tab$suffix.png")
+    done
+  done
   for mode in "${appearance_modes[@]}"; do
     for state in "${icon_states[@]}"; do
       expected_files+=("$OUT_DIR/menubar-icon-$mode-$state.png")
@@ -230,6 +228,12 @@ else
   settings_capture_status="missing"
 fi
 
+if [[ -s "$OUT_DIR/settings-window-dark.png" ]]; then
+  settings_dark_capture_status="pass"
+else
+  settings_dark_capture_status="missing"
+fi
+
 if [[ -s "$OUT_DIR/ui-smoke-status.txt" ]]; then
   parsed_tab_click_dispatch_status="$(awk -F= '/^tabClickDispatch=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
   parsed_click_stats_capture_status="$(awk -F= '/^statsCapture=/{print $2}' "$OUT_DIR/ui-smoke-status.txt" | tail -n1 | tr -d '[:space:]')"
@@ -273,19 +277,9 @@ if [[ -s "$OUT_DIR/ui-smoke-status.txt" ]]; then
   fi
 fi
 
-settings_tab_files=(
-  "$OUT_DIR/settings-general.png"
-  "$OUT_DIR/settings-transcribe.png"
-  "$OUT_DIR/settings-polish.png"
-  "$OUT_DIR/settings-providers.png"
-  "$OUT_DIR/settings-hotkeys.png"
-  "$OUT_DIR/settings-rules.png"
-  "$OUT_DIR/settings-data.png"
-  "$OUT_DIR/settings-about.png"
-)
 missing_tab_count=0
-for tab_file in "${settings_tab_files[@]}"; do
-  if [[ ! -s "$tab_file" ]]; then
+for tab in "${settings_tabs[@]}"; do
+  if [[ ! -s "$OUT_DIR/settings-$tab.png" ]]; then
     missing_tab_count=$((missing_tab_count + 1))
   fi
 done
@@ -293,6 +287,18 @@ if [[ $missing_tab_count -eq 0 ]]; then
   settings_tab_capture_status="pass"
 else
   settings_tab_capture_status="missing:$missing_tab_count"
+fi
+
+missing_dark_tab_count=0
+for tab in "${settings_tabs[@]}"; do
+  if [[ ! -s "$OUT_DIR/settings-$tab-dark.png" ]]; then
+    missing_dark_tab_count=$((missing_dark_tab_count + 1))
+  fi
+done
+if [[ $missing_dark_tab_count -eq 0 ]]; then
+  settings_dark_tab_capture_status="pass"
+else
+  settings_dark_tab_capture_status="missing:$missing_dark_tab_count"
 fi
 
 missing_icon_count=0
@@ -356,6 +362,12 @@ fi
 if [[ "$settings_tab_capture_status" != "pass" ]]; then
   overall_status=1
 fi
+if [[ "$settings_dark_capture_status" != "pass" ]]; then
+  overall_status=1
+fi
+if [[ "$settings_dark_tab_capture_status" != "pass" ]]; then
+  overall_status=1
+fi
 if [[ "$menubar_icon_capture_status" != "pass" ]]; then
   overall_status=1
 fi
@@ -380,8 +392,10 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - History vertical fill (compact): $history_vertical_fill_status
 - History vertical fill reason: $history_vertical_fill_reason
 - Live expanded content screenshot: $live_expanded_content_capture_status
-- Settings window screenshot: $settings_capture_status
-- Settings tab screenshots: $settings_tab_capture_status
+- Settings window screenshot (light): $settings_capture_status
+- Settings tab screenshots (light): $settings_tab_capture_status
+- Settings window screenshot (dark): $settings_dark_capture_status
+- Settings tab screenshots (dark): $settings_dark_tab_capture_status
 - Menubar icon screenshots: $menubar_icon_capture_status
 
 ## Artifacts
@@ -402,21 +416,30 @@ cat > "$OUT_DIR/report.md" <<REPORT
 - openscribe-window-hotkey-live.png
 - openscribe-window-live-expanded-content.png
 - settings-window.png
+- settings-window-dark.png
 - settings-general.png
+- settings-general-dark.png
 - settings-transcribe.png
+- settings-transcribe-dark.png
 - settings-polish.png
+- settings-polish-dark.png
 - settings-providers.png
+- settings-providers-dark.png
 - settings-hotkeys.png
+- settings-hotkeys-dark.png
 - settings-rules.png
+- settings-rules-dark.png
 - settings-data.png
+- settings-data-dark.png
 - settings-about.png
+- settings-about-dark.png
 - menubar-icon-<mode>-<state>.png (18 files)
 
 ## Notes
 
 - OpenScribe writes screenshots from inside the app in smoke mode for deterministic captures.
-- Settings screenshots are intended for docs refreshes and are captured on the built-in Retina display when available.
-- Popover screenshots remain regression artifacts only. Published docs reuse curated assets from site-docs/images/ui/openscribe-*.png.
+- Settings screenshots are intended for docs refreshes and are captured on the built-in Retina display when available in both light and dark appearances.
+- Popover screenshots remain regression artifacts only. Published docs reuse curated assets from site-docs/images/ui/.
 - The smoke run validates artifact presence and required file coverage.
 - Visual correctness still requires manual screenshot review.
 REPORT
