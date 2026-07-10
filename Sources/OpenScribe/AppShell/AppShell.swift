@@ -83,6 +83,7 @@ final class AppShell: ObservableObject {
     nonisolated private static let realtimeTranscriptionProviderID = "openai_realtime_transcription"
     nonisolated private static let realtimeTranscriptionSampleRate: Double = 24_000
     nonisolated private static let standardTranscriptionSampleRate: Double = 16_000
+    nonisolated private static let uiSmokeModeEnabled = ProcessInfo.processInfo.environment["OPENSCRIBE_UI_SMOKE"] == "1"
 
     enum HistoryLoadMoreMode: String, CaseIterable, Identifiable {
         case next10
@@ -211,7 +212,7 @@ final class AppShell: ObservableObject {
         self.settingsStore = SettingsStore(layout: resolvedLayout)
         self.rulesStore = RulesStore(layout: resolvedLayout)
         self.modelManager = ModelDownloadManager(layout: resolvedLayout)
-        self.keychainStore = KeychainStore()
+        self.keychainStore = KeychainStore(isEnabled: !Self.uiSmokeModeEnabled)
         self.apiKeyResolver = APIKeyResolver(keychain: keychainStore)
         self.sessionManager = SessionManager(layout: resolvedLayout)
         self.statsStore = StatsStore(layout: resolvedLayout)
@@ -234,11 +235,19 @@ final class AppShell: ObservableObject {
         self.permissionState = audioCapture.permissionState()
         applyMicrophoneSnapshot(microphoneCatalog.currentSnapshot())
 
-        self.openAIKeyInput = keychainStore.load(.openAI) ?? ""
-        self.groqKeyInput = keychainStore.load(.groq) ?? ""
-        self.openRouterKeyInput = keychainStore.load(.openRouter) ?? ""
-        self.geminiKeyInput = keychainStore.load(.gemini) ?? ""
-        self.cerebrasKeyInput = keychainStore.load(.cerebras) ?? ""
+        if Self.uiSmokeModeEnabled {
+            self.openAIKeyInput = ""
+            self.groqKeyInput = ""
+            self.openRouterKeyInput = ""
+            self.geminiKeyInput = ""
+            self.cerebrasKeyInput = ""
+        } else {
+            self.openAIKeyInput = keychainStore.load(.openAI) ?? ""
+            self.groqKeyInput = keychainStore.load(.groq) ?? ""
+            self.openRouterKeyInput = keychainStore.load(.openRouter) ?? ""
+            self.geminiKeyInput = keychainStore.load(.gemini) ?? ""
+            self.cerebrasKeyInput = keychainStore.load(.cerebras) ?? ""
+        }
 
         audioCapture.onActivityUpdate = { [audioMeter] snapshot in
             Task { @MainActor in
@@ -262,7 +271,9 @@ final class AppShell: ObservableObject {
 
         normalizeReservedHotkeyConflicts()
         registerHotkeys()
-        prefetchProviderCatalogsOnLaunch()
+        if !Self.uiSmokeModeEnabled {
+            prefetchProviderCatalogsOnLaunch()
+        }
     }
 
     var settings: AppSettings {
@@ -389,7 +400,12 @@ final class AppShell: ObservableObject {
     }
 
     func updateSettings(_ mutate: (inout AppSettings) -> Void) {
-        settingsStore.update(mutate)
+        guard settingsStore.update(mutate) else {
+            lastError = settingsStore.persistenceError
+            statusMessage = "Settings could not be saved"
+            return
+        }
+        lastError = nil
         registerHotkeys()
         applyAppearanceMode()
     }
@@ -1072,7 +1088,7 @@ final class AppShell: ObservableObject {
                 self.rawTranscriptModel = ""
                 self.polishedTranscriptProviderID = ""
                 self.polishedTranscriptModel = ""
-                self.statusMessage = "No audio captured. Speak clearly and try again."
+                self.statusMessage = audioActivity.userGuidance
                 return
             }
 
@@ -1593,8 +1609,12 @@ final class AppShell: ObservableObject {
             return
         }
 
-        settingsStore.update { settings in
+        let didPersist = settingsStore.update { settings in
             settings.copyRawHotkey = .copyRawDefault
+        }
+        if !didPersist {
+            lastError = settingsStore.persistenceError
+            statusMessage = "Settings could not be saved"
         }
     }
 
@@ -2062,7 +2082,8 @@ final class AppShell: ObservableObject {
         try sessionManager.writePolished("", for: &session)
         try sessionManager.transition(&session, to: .completed, details: "No usable speech detected: \(reason)")
         sessionState = .completed
-        statusMessage = "No audio captured. Speak clearly and try again."
+        statusMessage = session.metadata.audioActivity?.userGuidance
+            ?? "No usable speech was detected. Check the microphone and try again."
         lastError = nil
     }
 

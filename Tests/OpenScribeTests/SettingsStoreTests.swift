@@ -89,6 +89,32 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(reloaded.settings.activeSessionIndicatorEnabled)
     }
 
+    func testFailedPersistenceKeepsPreviousSettingsAndReportsError() throws {
+        let validLayout = try makeTempLayout()
+        let invalidLayout = DirectoryLayout(
+            appSupport: validLayout.appSupport,
+            recordings: validLayout.recordings,
+            rules: validLayout.rules,
+            stats: validLayout.stats,
+            models: validLayout.models,
+            config: validLayout.config,
+            rulesFile: validLayout.rulesFile,
+            rulesHistory: validLayout.rulesHistory,
+            statsEventsFile: validLayout.statsEventsFile,
+            settingsFile: validLayout.config
+        )
+        let store = SettingsStore(layout: invalidLayout)
+        let original = store.settings
+
+        let didPersist = store.update {
+            $0.copyOnComplete.toggle()
+        }
+
+        XCTAssertFalse(didPersist)
+        XCTAssertEqual(store.settings, original)
+        XCTAssertNotNil(store.persistenceError)
+    }
+
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("OpenScribeSettingsTests-\(UUID().uuidString)", isDirectory: true)

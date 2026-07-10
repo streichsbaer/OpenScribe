@@ -102,7 +102,7 @@ launch_mode="swift-run"
 launch_target="swift run OpenScribe"
 app_executable=""
 launch_prefix=()
-timeout_seconds=45
+timeout_seconds=120
 
 if [[ -n "$APP_PATH" ]]; then
   app_name="$(basename "$APP_PATH" .app)"

@@ -78,6 +78,20 @@ final class AudioActivityAnalyzerTests: XCTestCase {
         XCTAssertTrue(analyzer.latestSnapshot.isActive)
     }
 
+    func testRejectedAudioProvidesSpecificUserGuidance() {
+        XCTAssertEqual(
+            AudioActivityAssessment.noData.userGuidance,
+            "No microphone audio was received. Check the selected input and try again."
+        )
+
+        let analyzer = AudioActivityAnalyzer()
+        ingest(level: 0.0004, chunks: 20, into: analyzer)
+        XCTAssertEqual(
+            analyzer.assess().userGuidance,
+            "Input was very quiet. Move closer to the microphone or choose a more sensitive input."
+        )
+    }
+
     private func ingest(level: Float, chunks: Int, into analyzer: AudioActivityAnalyzer) {
         for _ in 0..<chunks {
             analyzer.ingest(rmsLevel: level, frameCount: 1_024, sampleRate: 16_000)

@@ -23,6 +23,21 @@ struct AudioActivityAssessment: Codable, Equatable, Sendable {
         verdict == .usableSpeech
     }
 
+    var userGuidance: String {
+        switch reason {
+        case "No audio data captured.":
+            return "No microphone audio was received. Check the selected input and try again."
+        case "Recording was too short.":
+            return "Recording was too short. Speak for a little longer and try again."
+        case "Signal peak stayed below speech threshold.":
+            return "Input was very quiet. Move closer to the microphone or choose a more sensitive input."
+        case "No sustained speech activity detected.":
+            return "No sustained speech was detected. Check the microphone level and try again."
+        default:
+            return hasUsableSpeech ? "Usable speech detected." : "No usable speech was detected. Check the microphone and try again."
+        }
+    }
+
     static let noData = AudioActivityAssessment(
         verdict: .noUsableSpeech,
         reason: "No audio data captured.",

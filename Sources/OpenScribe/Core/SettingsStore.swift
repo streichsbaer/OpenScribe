@@ -3,39 +3,51 @@ import Foundation
 @MainActor
 final class SettingsStore: ObservableObject {
     @Published private(set) var settings: AppSettings
+    @Published private(set) var persistenceError: String?
 
     private let fileURL: URL
-    private let fileManager: FileManager
 
-    init(layout: DirectoryLayout, fileManager: FileManager = .default) {
+    init(layout: DirectoryLayout) {
         self.fileURL = layout.settingsFile
-        self.fileManager = fileManager
+        self.persistenceError = nil
 
         if let loaded = Self.load(from: fileURL) {
             self.settings = loaded
         } else {
             self.settings = .default
-            try? persist()
+            do {
+                try persist(settings)
+            } catch {
+                persistenceError = error.localizedDescription
+            }
         }
     }
 
-    func update(_ mutate: (inout AppSettings) -> Void) {
+    @discardableResult
+    func update(_ mutate: (inout AppSettings) -> Void) -> Bool {
         var draft = settings
         mutate(&draft)
-        settings = draft
-        try? persist()
+        do {
+            try persist(draft)
+            settings = draft
+            persistenceError = nil
+            return true
+        } catch {
+            persistenceError = error.localizedDescription
+            return false
+        }
     }
 
-    func resetToDefaults() {
-        settings = .default
-        try? persist()
+    @discardableResult
+    func resetToDefaults() -> Bool {
+        update { $0 = .default }
     }
 
-    private func persist() throws {
+    private func persist(_ value: AppSettings) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(settings)
-        try atomicWrite(data, to: fileURL)
+        let data = try encoder.encode(value)
+        try data.write(to: fileURL, options: [.atomic])
     }
 
     private static func load(from url: URL) -> AppSettings? {
@@ -44,16 +56,5 @@ final class SettingsStore: ObservableObject {
         }
 
         return try? JSONDecoder().decode(AppSettings.self, from: data)
-    }
-
-    private func atomicWrite(_ data: Data, to url: URL) throws {
-        let tmpURL = url.deletingLastPathComponent().appendingPathComponent("\(UUID().uuidString).tmp")
-        try data.write(to: tmpURL, options: [.atomic])
-
-        if fileManager.fileExists(atPath: url.path) {
-            try fileManager.removeItem(at: url)
-        }
-
-        try fileManager.moveItem(at: tmpURL, to: url)
     }
 }

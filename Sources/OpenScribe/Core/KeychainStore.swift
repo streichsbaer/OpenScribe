@@ -3,12 +3,16 @@ import Security
 
 final class KeychainStore {
     private let service: String
+    private let isEnabled: Bool
 
-    init(service: String = "OpenScribe") {
+    init(service: String = "OpenScribe", isEnabled: Bool = true) {
         self.service = service
+        self.isEnabled = isEnabled
     }
 
     func save(_ value: String, for entry: KeychainEntry) throws {
+        guard isEnabled else { return }
+
         let data = Data(value.utf8)
 
         let query: [String: Any] = [
@@ -29,6 +33,8 @@ final class KeychainStore {
     }
 
     func load(_ entry: KeychainEntry) -> String? {
+        guard isEnabled else { return nil }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -50,6 +56,8 @@ final class KeychainStore {
     }
 
     func delete(_ entry: KeychainEntry) {
+        guard isEnabled else { return }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

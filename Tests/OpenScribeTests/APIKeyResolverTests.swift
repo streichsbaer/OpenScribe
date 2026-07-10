@@ -40,4 +40,12 @@ final class APIKeyResolverTests: XCTestCase {
         XCTAssertEqual(resolution.source, .keychain)
         XCTAssertTrue(resolution.keychainPresent)
     }
+
+    func testDisabledStoreDoesNotReadOrWriteKeychain() throws {
+        let disabledStore = KeychainStore(service: serviceName, isEnabled: false)
+        try disabledStore.save("test-key", for: .openAI)
+
+        XCTAssertNil(disabledStore.load(.openAI))
+        XCTAssertNil(keychain.load(.openAI))
+    }
 }

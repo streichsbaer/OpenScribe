@@ -180,6 +180,7 @@ struct PopoverView: View {
             levelMeter
                 .frame(width: Self.controlBarMeterWidth, height: Self.controlBarTransportButtonHeight)
                 .accessibilityLabel("Recording input level")
+                .accessibilityValue(audioMeterAccessibilityValue)
                 .instantHint("Monitor recording input level", hoverHint: $hoverHint)
 
             devicePicker
@@ -310,6 +311,11 @@ struct PopoverView: View {
             trackWidth: Self.controlBarMeterTrackWidth,
             trackHeight: Self.controlBarMeterHeight
         )
+    }
+
+    private var audioMeterAccessibilityValue: String {
+        let state = shell.audioMeter.snapshot.isActive ? "speech detected" : "quiet"
+        return "\(Int(shell.audioMeter.snapshot.levelDBFS.rounded())) decibels full scale, \(state)"
     }
 
     private var devicePicker: some View {
