@@ -2,6 +2,8 @@ import CryptoKit
 import Foundation
 
 final class ModelDownloadManager: ObservableObject {
+    nonisolated static let modelRepositoryRevision = "5359861c739e955e79d9a303bcbc70fb988958b1"
+
     @Published var activeDownloadModelID: String?
     @Published var progress: Double = 0
 
@@ -17,30 +19,30 @@ final class ModelDownloadManager: ObservableObject {
             ModelAsset(
                 id: "tiny",
                 displayName: "tiny",
-                downloadURL: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin?download=true")!,
+                downloadURL: Self.downloadURL(for: "tiny"),
                 expectedSizeBytes: 77_691_713,
-                sha256: nil
+                sha256: "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"
             ),
             ModelAsset(
                 id: "base",
                 displayName: "base",
-                downloadURL: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin?download=true")!,
+                downloadURL: Self.downloadURL(for: "base"),
                 expectedSizeBytes: 147_951_465,
-                sha256: nil
+                sha256: "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"
             ),
             ModelAsset(
                 id: "small",
                 displayName: "small",
-                downloadURL: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin?download=true")!,
+                downloadURL: Self.downloadURL(for: "small"),
                 expectedSizeBytes: 487_601_967,
-                sha256: nil
+                sha256: "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
             ),
             ModelAsset(
                 id: "medium",
                 displayName: "medium",
-                downloadURL: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin?download=true")!,
+                downloadURL: Self.downloadURL(for: "medium"),
                 expectedSizeBytes: 1_533_763_059,
-                sha256: nil
+                sha256: "6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208"
             )
         ]
     }
@@ -132,15 +134,36 @@ final class ModelDownloadManager: ObservableObject {
         try fileManager.moveItem(at: downloadedURL, to: temp)
         progress = 1
 
-        try validate(asset: asset, file: temp)
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
+        do {
+            try await Self.validateOffMain(asset: asset, file: temp)
+            if fileManager.fileExists(atPath: destination.path) {
+                try fileManager.removeItem(at: destination)
+            }
+            try fileManager.moveItem(at: temp, to: destination)
+        } catch {
+            try? fileManager.removeItem(at: temp)
+            throw error
         }
-        try fileManager.moveItem(at: temp, to: destination)
         return destination
     }
 
-    private func validate(asset: ModelAsset, file: URL) throws {
+    private nonisolated static func downloadURL(for modelID: String) -> URL {
+        URL(
+            string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/\(modelRepositoryRevision)/ggml-\(modelID).bin"
+        )!
+    }
+
+    private nonisolated static func validateOffMain(asset: ModelAsset, file: URL) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                continuation.resume(with: Result {
+                    try validate(asset: asset, file: file)
+                })
+            }
+        }
+    }
+
+    private nonisolated static func validate(asset: ModelAsset, file: URL) throws {
         let values = try file.resourceValues(forKeys: [.fileSizeKey])
         if let size = values.fileSize {
             let expected = Int(asset.expectedSizeBytes)
@@ -149,13 +172,16 @@ final class ModelDownloadManager: ObservableObject {
             }
         }
 
-        if let expectedHash = asset.sha256 {
-            let data = try Data(contentsOf: file)
-            let digest = SHA256.hash(data: data)
-            let hash = digest.compactMap { String(format: "%02x", $0) }.joined()
-            if hash.lowercased() != expectedHash.lowercased() {
-                throw ProviderError.processFailed("Downloaded model hash mismatch for \(asset.id).")
-            }
+        let handle = try FileHandle(forReadingFrom: file)
+        defer { try? handle.close() }
+
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1_048_576), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        let hash = hasher.finalize().compactMap { String(format: "%02x", $0) }.joined()
+        if hash.lowercased() != asset.sha256.lowercased() {
+            throw ProviderError.processFailed("Downloaded model hash mismatch for \(asset.id).")
         }
     }
 }

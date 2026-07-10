@@ -213,12 +213,12 @@ enum AppearanceMode: String, CaseIterable, Codable, Equatable {
     }
 }
 
-struct ModelAsset: Codable, Equatable, Identifiable {
+struct ModelAsset: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let displayName: String
     let downloadURL: URL
     let expectedSizeBytes: Int64
-    let sha256: String?
+    let sha256: String
 }
 
 enum ProviderError: Error, LocalizedError {
