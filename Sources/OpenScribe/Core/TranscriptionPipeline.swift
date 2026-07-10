@@ -21,11 +21,14 @@ struct TranscriptionPipeline {
             instruction = nil
         }
 
-        return try await provider.transcribe(
-            audioFileURL: audioFileURL,
-            language: language,
-            model: settings.transcriptionModel,
-            instruction: instruction
-        )
+        let model = settings.transcriptionModel
+        return try await Task.detached(priority: .userInitiated) {
+            try await provider.transcribe(
+                audioFileURL: audioFileURL,
+                language: language,
+                model: model,
+                instruction: instruction
+            )
+        }.value
     }
 }

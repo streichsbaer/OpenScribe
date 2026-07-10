@@ -89,16 +89,21 @@ final class SessionManager {
         try persistMetadata(session)
     }
 
-    func finalizeAudioFile(_ session: inout SessionContext) throws {
+    @MainActor
+    func finalizeAudioFile(_ session: inout SessionContext) async throws {
         guard fileManager.fileExists(atPath: session.paths.audioTempURL.path) else {
             return
         }
 
-        try AudioTranscoder.transcodeToM4A(
-            sourceWAVURL: session.paths.audioTempURL,
-            destinationURL: session.paths.audioURL
-        )
-        try fileManager.removeItem(at: session.paths.audioTempURL)
+        let sourceURL = session.paths.audioTempURL
+        let destinationURL = session.paths.audioURL
+        try await Task.detached(priority: .userInitiated) {
+            try AudioTranscoder.transcodeToM4A(
+                sourceWAVURL: sourceURL,
+                destinationURL: destinationURL
+            )
+            try FileManager.default.removeItem(at: sourceURL)
+        }.value
     }
 
     func writeRaw(_ text: String, for session: inout SessionContext) throws {

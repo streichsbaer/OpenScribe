@@ -30,7 +30,7 @@ enum SessionState: String, Codable {
     }
 }
 
-struct TranscriptResult: Codable {
+struct TranscriptResult: Codable, Sendable {
     let text: String
     let providerId: String
     let model: String
@@ -39,7 +39,7 @@ struct TranscriptResult: Codable {
     let outputTokens: Int?
 }
 
-struct PolishResult: Codable {
+struct PolishResult: Codable, Sendable {
     let markdown: String
     let providerId: String
     let model: String

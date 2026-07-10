@@ -194,20 +194,23 @@ func performWhisperRequest(
         fields[key] = value
     }
 
-    let body = try builder.makeBody(
+    let bodyURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("openscribe-multipart-\(UUID().uuidString).body")
+    defer { try? FileManager.default.removeItem(at: bodyURL) }
+    try builder.writeBody(
         fields: fields,
         fileFieldName: "file",
         fileURL: audioFileURL,
-        mimeType: mimeTypeForWhisperUpload(audioFileURL)
+        mimeType: mimeTypeForWhisperUpload(audioFileURL),
+        destinationURL: bodyURL
     )
 
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
     request.setValue("multipart/form-data; boundary=\(builder.boundary)", forHTTPHeaderField: "Content-Type")
-    request.httpBody = body
 
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await URLSession.shared.upload(for: request, fromFile: bodyURL)
     guard let http = response as? HTTPURLResponse else {
         throw ProviderError.invalidResponse
     }

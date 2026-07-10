@@ -1,7 +1,7 @@
 import Foundation
 
-struct AudioActivityAssessment: Codable, Equatable {
-    enum Verdict: String, Codable {
+struct AudioActivityAssessment: Codable, Equatable, Sendable {
+    enum Verdict: String, Codable, Sendable {
         case usableSpeech
         case noUsableSpeech
     }

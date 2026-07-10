@@ -1,6 +1,6 @@
 import Foundation
 
-final class GeminiPolishProvider: PolishProvider {
+final class GeminiPolishProvider: PolishProvider, @unchecked Sendable {
     let id = "gemini_polish"
     let displayName = "Gemini Polish"
 

@@ -870,7 +870,7 @@ final class AppShell: ObservableObject {
                 throw error
             }
             let audioActivity = captureResult.assessment
-            try sessionManager.finalizeAudioFile(&session)
+            try await sessionManager.finalizeAudioFile(&session)
             try sessionManager.stopSession(&session)
             session.metadata.audioActivity = audioActivity
 
@@ -1946,10 +1946,12 @@ final class AppShell: ObservableObject {
         audioActivity: AudioActivityAssessment?,
         settings: AppSettings
     ) async throws -> TranscriptResult {
-        let preparedAudio = try TranscriptionAudioPreprocessor.prepare(
-            sourceURL: audioFileURL,
-            assessment: audioActivity
-        )
+        let preparedAudio = try await Task.detached(priority: .userInitiated) {
+            try TranscriptionAudioPreprocessor.prepare(
+                sourceURL: audioFileURL,
+                assessment: audioActivity
+            )
+        }.value
         defer { preparedAudio.cleanup() }
 
         return try await ProviderRetryPolicy.run {

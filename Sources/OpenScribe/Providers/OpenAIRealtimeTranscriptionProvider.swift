@@ -1,6 +1,6 @@
 import Foundation
 
-final class OpenAIRealtimeTranscriptionProvider: TranscriptionProvider {
+final class OpenAIRealtimeTranscriptionProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "openai_realtime_transcription"
     let displayName = "OpenAI Realtime"
 

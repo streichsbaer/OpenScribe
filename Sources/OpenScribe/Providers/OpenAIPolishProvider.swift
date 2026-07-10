@@ -1,6 +1,6 @@
 import Foundation
 
-final class OpenAIPolishProvider: PolishProvider {
+final class OpenAIPolishProvider: PolishProvider, @unchecked Sendable {
     let id = "openai_polish"
     let displayName = "OpenAI Polish"
 

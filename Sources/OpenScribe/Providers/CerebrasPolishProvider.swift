@@ -1,6 +1,6 @@
 import Foundation
 
-final class CerebrasPolishProvider: PolishProvider {
+final class CerebrasPolishProvider: PolishProvider, @unchecked Sendable {
     let id = "cerebras_polish"
     let displayName = "Cerebras Polish"
 

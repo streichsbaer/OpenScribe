@@ -1,6 +1,6 @@
 import Foundation
 
-final class GeminiTranscriptionProvider: TranscriptionProvider {
+final class GeminiTranscriptionProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "gemini_transcribe"
     let displayName = "Gemini Transcription"
 

@@ -1,6 +1,6 @@
 import Foundation
 
-final class OpenAIWhisperProvider: TranscriptionProvider {
+final class OpenAIWhisperProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "openai_whisper"
     let displayName = "OpenAI Whisper"
 

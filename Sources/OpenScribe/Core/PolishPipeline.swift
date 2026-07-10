@@ -12,11 +12,14 @@ struct PolishPipeline {
         } else {
             instruction = nil
         }
-        return try await provider.polish(
-            rawText: rawText,
-            rulesMarkdown: rulesMarkdown,
-            model: settings.polishModel,
-            instruction: instruction
-        )
+        let model = settings.polishModel
+        return try await Task.detached(priority: .userInitiated) {
+            try await provider.polish(
+                rawText: rawText,
+                rulesMarkdown: rulesMarkdown,
+                model: model,
+                instruction: instruction
+            )
+        }.value
     }
 }

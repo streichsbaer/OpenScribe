@@ -1,6 +1,6 @@
 import Foundation
 
-final class WhisperCppProvider: TranscriptionProvider {
+final class WhisperCppProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "whispercpp"
     let displayName = "Local whisper.cpp"
 

@@ -1,6 +1,6 @@
 import Foundation
 
-final class OpenRouterTranscriptionProvider: TranscriptionProvider {
+final class OpenRouterTranscriptionProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "openrouter_transcribe"
     let displayName = "OpenRouter Transcription"
 

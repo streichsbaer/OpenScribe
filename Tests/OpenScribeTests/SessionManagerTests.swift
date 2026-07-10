@@ -20,14 +20,14 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(metadata.inputDeviceName, "Test Mic")
     }
 
-    func testFinalizeAudioMovesPartFileAtomically() throws {
+    func testFinalizeAudioMovesPartFileAtomically() async throws {
         let layout = try makeTempLayout()
         let manager = SessionManager(layout: layout)
         var session = try manager.startSession(settings: .default, inputDeviceName: nil)
 
         let sourceWAV = try fixtureWAVURL()
         try FileManager.default.copyItem(at: sourceWAV, to: session.paths.audioTempURL)
-        try manager.finalizeAudioFile(&session)
+        try await manager.finalizeAudioFile(&session)
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: session.paths.audioTempURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: session.paths.audioURL.path))

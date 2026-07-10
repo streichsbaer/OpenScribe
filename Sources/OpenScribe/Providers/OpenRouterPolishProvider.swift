@@ -1,6 +1,6 @@
 import Foundation
 
-final class OpenRouterPolishProvider: PolishProvider {
+final class OpenRouterPolishProvider: PolishProvider, @unchecked Sendable {
     let id = "openrouter_polish"
     let displayName = "OpenRouter Polish"
 

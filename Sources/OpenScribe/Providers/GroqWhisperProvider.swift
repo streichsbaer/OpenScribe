@@ -1,6 +1,6 @@
 import Foundation
 
-final class GroqWhisperProvider: TranscriptionProvider {
+final class GroqWhisperProvider: TranscriptionProvider, @unchecked Sendable {
     let id = "groq_whisper"
     let displayName = "Groq Whisper"
 

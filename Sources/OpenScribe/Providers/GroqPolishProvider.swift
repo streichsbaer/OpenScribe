@@ -1,6 +1,6 @@
 import Foundation
 
-final class GroqPolishProvider: PolishProvider {
+final class GroqPolishProvider: PolishProvider, @unchecked Sendable {
     let id = "groq_polish"
     let displayName = "Groq Polish"
 
