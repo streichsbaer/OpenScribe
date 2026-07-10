@@ -104,6 +104,33 @@ final class OpenAIRealtimeTranscriptionProviderTests: XCTestCase {
         ])
     }
 
+    func testRealtimeAudioSenderKeepsPreRollWhenSpeechResumesAfterLongPause() async throws {
+        let recorder = RealtimeAudioSendRecorder()
+        let sender = OpenAIRealtimeAudioSender(
+            onSend: { data in
+                await recorder.append(data)
+            },
+            sampleRate: 4
+        )
+
+        sender.append(Data([0x01, 0x01]), isActive: true)
+        sender.append(Data([0x02, 0x02]), isActive: false)
+        sender.append(Data([0x03, 0x03]), isActive: false)
+        sender.append(Data([0x04, 0x04]), isActive: false)
+        sender.append(Data([0x05, 0x05]), isActive: true)
+
+        try await sender.finishSending()
+
+        let chunks = await recorder.chunks
+        XCTAssertEqual(chunks, [
+            Data([0x01, 0x01]),
+            Data([0x02, 0x02]),
+            Data([0x03, 0x03]),
+            Data([0x04, 0x04]),
+            Data([0x05, 0x05])
+        ])
+    }
+
     func testRealtimeAudioSenderDropsAllQuietRecording() async throws {
         let recorder = RealtimeAudioSendRecorder()
         let sender = OpenAIRealtimeAudioSender { data in

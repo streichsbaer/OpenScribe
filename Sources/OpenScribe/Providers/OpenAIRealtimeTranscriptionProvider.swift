@@ -244,13 +244,23 @@ actor OpenAIRealtimeTranscriptionSession {
 }
 
 final class OpenAIRealtimeAudioSender: @unchecked Sendable {
+    private struct BufferedChunk {
+        let sequence: Int
+        let data: Data
+    }
+
     private let continuation: AsyncStream<Data>.Continuation
     private let task: Task<Void, Error>
     private let stateLock = NSLock()
     private let preRollByteLimit: Int
     private let postRollByteLimit: Int
-    private var pendingEdgeChunks: [Data] = []
-    private var pendingEdgeByteCount = 0
+    private var leadingPreRollChunks: [BufferedChunk] = []
+    private var leadingPreRollByteCount = 0
+    private var pausePostRollChunks: [BufferedChunk] = []
+    private var pausePostRollByteCount = 0
+    private var pausePreRollChunks: [BufferedChunk] = []
+    private var pausePreRollByteCount = 0
+    private var nextBufferedChunkSequence = 0
     private var hasDetectedSpeech = false
     private var failure: RealtimeAudioSenderError?
 
@@ -299,15 +309,38 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
         let chunksToSend: [Data]
         stateLock.lock()
         if isActive {
+            let edgeChunks = hasDetectedSpeech
+                ? Self.mergedChunks(pausePostRollChunks, pausePreRollChunks)
+                : leadingPreRollChunks
             hasDetectedSpeech = true
-            chunksToSend = pendingEdgeChunks + [data]
-            pendingEdgeChunks = []
-            pendingEdgeByteCount = 0
+            chunksToSend = edgeChunks.map(\.data) + [data]
+            clearPendingChunks()
         } else if hasDetectedSpeech {
-            appendPendingChunk(data, byteLimit: postRollByteLimit, keepNewest: false)
+            let chunk = nextBufferedChunk(data)
+            Self.appendPendingChunk(
+                chunk,
+                to: &pausePostRollChunks,
+                byteCount: &pausePostRollByteCount,
+                byteLimit: postRollByteLimit,
+                keepNewest: false
+            )
+            Self.appendPendingChunk(
+                chunk,
+                to: &pausePreRollChunks,
+                byteCount: &pausePreRollByteCount,
+                byteLimit: preRollByteLimit,
+                keepNewest: true
+            )
             chunksToSend = []
         } else {
-            appendPendingChunk(data, byteLimit: preRollByteLimit, keepNewest: true)
+            let chunk = nextBufferedChunk(data)
+            Self.appendPendingChunk(
+                chunk,
+                to: &leadingPreRollChunks,
+                byteCount: &leadingPreRollByteCount,
+                byteLimit: preRollByteLimit,
+                keepNewest: true
+            )
             chunksToSend = []
         }
         stateLock.unlock()
@@ -319,9 +352,8 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
 
     func finishSending() async throws {
         let trailingChunks = stateLock.withLock {
-            let chunks = hasDetectedSpeech ? pendingEdgeChunks : []
-            pendingEdgeChunks = []
-            pendingEdgeByteCount = 0
+            let chunks = hasDetectedSpeech ? pausePostRollChunks.map(\.data) : []
+            clearPendingChunks()
             return chunks
         }
 
@@ -348,18 +380,48 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
         task.cancel()
     }
 
-    private func appendPendingChunk(_ data: Data, byteLimit: Int, keepNewest: Bool) {
+    private func nextBufferedChunk(_ data: Data) -> BufferedChunk {
+        defer { nextBufferedChunkSequence += 1 }
+        return BufferedChunk(sequence: nextBufferedChunkSequence, data: data)
+    }
+
+    private func clearPendingChunks() {
+        leadingPreRollChunks = []
+        leadingPreRollByteCount = 0
+        pausePostRollChunks = []
+        pausePostRollByteCount = 0
+        pausePreRollChunks = []
+        pausePreRollByteCount = 0
+    }
+
+    private static func mergedChunks(
+        _ postRollChunks: [BufferedChunk],
+        _ preRollChunks: [BufferedChunk]
+    ) -> [BufferedChunk] {
+        var seenSequences: Set<Int> = []
+        return (postRollChunks + preRollChunks)
+            .sorted { $0.sequence < $1.sequence }
+            .filter { seenSequences.insert($0.sequence).inserted }
+    }
+
+    private static func appendPendingChunk(
+        _ chunk: BufferedChunk,
+        to chunks: inout [BufferedChunk],
+        byteCount: inout Int,
+        byteLimit: Int,
+        keepNewest: Bool
+    ) {
         guard byteLimit > 0 else {
             return
         }
 
-        pendingEdgeChunks.append(data)
-        pendingEdgeByteCount += data.count
-        while pendingEdgeByteCount > byteLimit, !pendingEdgeChunks.isEmpty {
+        chunks.append(chunk)
+        byteCount += chunk.data.count
+        while byteCount > byteLimit, !chunks.isEmpty {
             if keepNewest {
-                pendingEdgeByteCount -= pendingEdgeChunks.removeFirst().count
+                byteCount -= chunks.removeFirst().data.count
             } else {
-                pendingEdgeByteCount -= pendingEdgeChunks.removeLast().count
+                byteCount -= chunks.removeLast().data.count
             }
         }
     }

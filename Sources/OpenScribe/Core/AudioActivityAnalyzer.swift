@@ -73,11 +73,15 @@ struct AudioActivityAnalyzerConfiguration {
     var minActiveDurationSeconds: Double = 0.15
     var minActiveBurstSeconds: Double = 0.06
     var noiseFloorAlpha: Double = 0.04
+    var initialCalibrationDurationSeconds: Double = 0.75
+    var initialAmbientMinimumLevel: Double = 0.004
+    var initialAmbientMaximumLevel: Double = 0.020
+    var maximumAmbientVariation: Double = 0.08
+    var minimumSpeechVariation: Double = 0.12
     var minNoiseFloor: Double = 0.0005
     var maxNoiseFloor: Double = 0.060
     var minActivityThreshold: Double = 0.0018
     var activityNoiseMultiplier: Double = 2.5
-    var thresholdUpdateRatio: Double = 0.85
     var releaseThresholdRatio: Double = 0.65
 
     static let `default` = AudioActivityAnalyzerConfiguration()
@@ -100,6 +104,16 @@ struct AudioActivitySnapshot: Equatable, Sendable {
 }
 
 final class AudioActivityAnalyzer {
+    private struct LevelSample {
+        let level: Double
+        var durationSeconds: Double
+    }
+
+    private struct LevelStatistics {
+        let mean: Double
+        let coefficientOfVariation: Double
+    }
+
     private let configuration: AudioActivityAnalyzerConfiguration
 
     private var totalDurationSeconds: Double = 0
@@ -113,6 +127,9 @@ final class AudioActivityAnalyzer {
     private var speechStartSeconds: Double?
     private var speechEndSeconds: Double?
     private var isCurrentlyActive = false
+    private var speechIsConfirmed = false
+    private var calibrationSamples: [LevelSample] = []
+    private var calibrationDurationSeconds: Double = 0
     private(set) var latestSnapshot = AudioActivitySnapshot.silence
 
     init(configuration: AudioActivityAnalyzerConfiguration = .default) {
@@ -151,13 +168,22 @@ final class AudioActivityAnalyzer {
         }
         isCurrentlyActive = isActive
 
-        updateThresholds(using: boundedLevel, isActive: isActive)
+        if speechIsConfirmed {
+            lowerNoiseFloorIfNeeded(using: boundedLevel, isActive: isActive)
+        } else {
+            updateUnconfirmedActivity(
+                level: boundedLevel,
+                durationSeconds: durationSeconds,
+                isActive: isActive
+            )
+        }
+
         latestSnapshot = AudioActivitySnapshot(
             rmsLevel: Float(boundedLevel),
             levelDBFS: Self.decibelsFS(for: boundedLevel),
             noiseFloor: Float(noiseFloor),
             threshold: Float(activityThreshold),
-            isActive: isActive
+            isActive: isCurrentlyActive
         )
     }
 
@@ -201,15 +227,136 @@ final class AudioActivityAnalyzer {
         )
     }
 
-    private func updateThresholds(using level: Double, isActive: Bool) {
-        let cutoff = max(activityThreshold * configuration.thresholdUpdateRatio, configuration.minActivityThreshold)
-        if !isActive, level <= cutoff {
-            let boundedNoiseLevel = min(level, configuration.maxNoiseFloor)
-            noiseFloor = ((1 - configuration.noiseFloorAlpha) * noiseFloor) + (configuration.noiseFloorAlpha * boundedNoiseLevel)
-            noiseFloor = min(max(noiseFloor, configuration.minNoiseFloor), configuration.maxNoiseFloor)
+    private func updateUnconfirmedActivity(level: Double, durationSeconds: Double, isActive: Bool) {
+        appendCalibrationSample(level: level, durationSeconds: durationSeconds)
+
+        guard let statistics = calibrationStatistics() else {
+            return
         }
 
-        activityThreshold = max(configuration.minActivityThreshold, noiseFloor * configuration.activityNoiseMultiplier)
+        let hasEnoughActivity = activeDurationSeconds >= configuration.minActiveDurationSeconds
+            && longestActiveBurstSeconds >= configuration.minActiveBurstSeconds
+        if hasEnoughActivity,
+           statistics.coefficientOfVariation >= configuration.minimumSpeechVariation {
+            confirmSpeech()
+            return
+        }
+
+        let calibrationWindow = max(
+            configuration.initialCalibrationDurationSeconds,
+            configuration.minActiveDurationSeconds
+        )
+        let hasFullCalibrationWindow = calibrationDurationSeconds >= calibrationWindow - 0.000_001
+        if hasFullCalibrationWindow, isInitialContinuousActivity {
+            let resemblesAmbientNoise = statistics.coefficientOfVariation <= configuration.maximumAmbientVariation
+                && statistics.mean >= configuration.initialAmbientMinimumLevel
+                && statistics.mean <= configuration.initialAmbientMaximumLevel
+            if resemblesAmbientNoise {
+                rebaselineInitialAmbientNoise(to: statistics.mean)
+                return
+            }
+
+            if hasEnoughActivity {
+                confirmSpeech()
+                return
+            }
+        }
+
+        if !isActive {
+            updateUnconfirmedNoiseFloor(using: level)
+        }
+    }
+
+    private var isInitialContinuousActivity: Bool {
+        speechStartSeconds == 0
+            && activeDurationSeconds >= max(0, totalDurationSeconds - 0.000_001)
+    }
+
+    private func appendCalibrationSample(level: Double, durationSeconds: Double) {
+        calibrationSamples.append(
+            LevelSample(
+                level: min(level, configuration.maxNoiseFloor),
+                durationSeconds: durationSeconds
+            )
+        )
+        calibrationDurationSeconds += durationSeconds
+
+        let windowDuration = max(configuration.initialCalibrationDurationSeconds, configuration.minActiveDurationSeconds)
+        var excessDuration = calibrationDurationSeconds - windowDuration
+        while excessDuration > 0, !calibrationSamples.isEmpty {
+            if calibrationSamples[0].durationSeconds <= excessDuration {
+                let removedDuration = calibrationSamples.removeFirst().durationSeconds
+                calibrationDurationSeconds -= removedDuration
+                excessDuration -= removedDuration
+            } else {
+                calibrationSamples[0].durationSeconds -= excessDuration
+                calibrationDurationSeconds -= excessDuration
+                excessDuration = 0
+            }
+        }
+    }
+
+    private func calibrationStatistics() -> LevelStatistics? {
+        guard calibrationDurationSeconds > 0 else {
+            return nil
+        }
+
+        let weightedLevel = calibrationSamples.reduce(0.0) {
+            $0 + ($1.level * $1.durationSeconds)
+        }
+        let mean = weightedLevel / calibrationDurationSeconds
+        let weightedVariance = calibrationSamples.reduce(0.0) {
+            let difference = $1.level - mean
+            return $0 + (difference * difference * $1.durationSeconds)
+        } / calibrationDurationSeconds
+        let denominator = max(mean, configuration.minNoiseFloor)
+        return LevelStatistics(
+            mean: mean,
+            coefficientOfVariation: sqrt(weightedVariance) / denominator
+        )
+    }
+
+    private func confirmSpeech() {
+        speechIsConfirmed = true
+        calibrationSamples.removeAll(keepingCapacity: false)
+        calibrationDurationSeconds = 0
+    }
+
+    private func rebaselineInitialAmbientNoise(to level: Double) {
+        noiseFloor = min(max(level, configuration.minNoiseFloor), configuration.maxNoiseFloor)
+        refreshActivityThreshold()
+        activeDurationSeconds = 0
+        currentActiveBurstSeconds = 0
+        longestActiveBurstSeconds = 0
+        speechStartSeconds = nil
+        speechEndSeconds = nil
+        isCurrentlyActive = false
+    }
+
+    private func updateUnconfirmedNoiseFloor(using level: Double) {
+        let boundedLevel = min(max(level, configuration.minNoiseFloor), configuration.maxNoiseFloor)
+        noiseFloor = ((1 - configuration.noiseFloorAlpha) * noiseFloor)
+            + (configuration.noiseFloorAlpha * boundedLevel)
+        refreshActivityThreshold()
+    }
+
+    private func lowerNoiseFloorIfNeeded(using level: Double, isActive: Bool) {
+        guard !isActive, level < noiseFloor else {
+            return
+        }
+
+        let boundedLevel = max(level, configuration.minNoiseFloor)
+        noiseFloor = ((1 - configuration.noiseFloorAlpha) * noiseFloor)
+            + (configuration.noiseFloorAlpha * boundedLevel)
+        refreshActivityThreshold()
+    }
+
+    private func refreshActivityThreshold() {
+        noiseFloor = min(max(noiseFloor, configuration.minNoiseFloor), configuration.maxNoiseFloor)
+        activityThreshold = max(
+            configuration.minActivityThreshold,
+            noiseFloor * configuration.activityNoiseMultiplier
+        )
     }
 
     private static func decibelsFS(for level: Double) -> Float {

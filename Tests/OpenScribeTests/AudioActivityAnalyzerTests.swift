@@ -34,15 +34,54 @@ final class AudioActivityAnalyzerTests: XCTestCase {
         let analyzer = AudioActivityAnalyzer()
 
         ingest(level: 0.0004, chunks: 20, into: analyzer)
-        ingest(level: 0.0030, chunks: 10, into: analyzer)
+        ingest(level: 0.0030, chunks: 20, into: analyzer)
         ingest(level: 0.0004, chunks: 20, into: analyzer)
 
         let assessment = analyzer.assess()
 
         XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
         XCTAssertEqual(assessment.speechStartMs, 1_280)
+        XCTAssertEqual(assessment.speechEndMs, 2_560)
+        XCTAssertEqual(assessment.transcriptionRange(), 1_030..<3_060)
+    }
+
+    func testReportsUsableSpeechWhenQuietSpeechStartsImmediately() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.0030, chunks: 30, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertEqual(assessment.speechStartMs, 0)
         XCTAssertEqual(assessment.speechEndMs, 1_920)
-        XCTAssertEqual(assessment.transcriptionRange(), 1_030..<2_420)
+    }
+
+    func testReportsUsableSpeechWhenLoudSpeechStartsImmediately() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.050, chunks: 30, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertEqual(assessment.speechStartMs, 0)
+        XCTAssertEqual(assessment.speechEndMs, 1_920)
+    }
+
+    func testReportsUsableSpeechForModulatedSpeech() {
+        let analyzer = AudioActivityAnalyzer()
+
+        for chunk in 0..<30 {
+            let level: Float = chunk.isMultiple(of: 2) ? 0.003 : 0.006
+            ingest(level: level, chunks: 1, into: analyzer)
+        }
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertEqual(assessment.speechStartMs, 0)
+        XCTAssertEqual(assessment.speechEndMs, 1_920)
     }
 
     func testReportsNoUsableSpeechForLowSteadyNoise() {
@@ -54,6 +93,69 @@ final class AudioActivityAnalyzerTests: XCTestCase {
 
         XCTAssertEqual(assessment.verdict, .noUsableSpeech)
         XCTAssertNil(assessment.transcriptionRange())
+    }
+
+    func testAdaptsWhenSteadyAmbientNoiseStartsAboveMinimumThreshold() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.005, chunks: 50, into: analyzer)
+
+        let assessment = analyzer.assess()
+        XCTAssertEqual(assessment.verdict, .noUsableSpeech)
+        XCTAssertLessThan(assessment.activeDurationMs, 150)
+        XCTAssertGreaterThan(assessment.threshold, 0.005)
+        XCTAssertNil(assessment.transcriptionRange())
+    }
+
+    func testAmbientCalibrationUsesDurationInsteadOfFrameCount() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(
+            level: 0.005,
+            chunks: 200,
+            frameCount: 480,
+            sampleRate: 48_000,
+            into: analyzer
+        )
+
+        let assessment = analyzer.assess()
+        XCTAssertEqual(assessment.verdict, .noUsableSpeech)
+        XCTAssertLessThan(assessment.activeDurationMs, 150)
+        XCTAssertGreaterThan(assessment.threshold, 0.005)
+        XCTAssertNil(assessment.transcriptionRange())
+    }
+
+    func testDetectsSpeechAfterInitialAmbientCalibration() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.005, chunks: 20, into: analyzer)
+        for chunk in 0..<20 {
+            let level: Float = chunk.isMultiple(of: 2) ? 0.015 : 0.025
+            ingest(level: level, chunks: 1, into: analyzer)
+        }
+        ingest(level: 0.005, chunks: 20, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertEqual(assessment.speechStartMs, 1_280)
+        XCTAssertEqual(assessment.speechEndMs, 2_560)
+        XCTAssertEqual(assessment.transcriptionRange(), 1_030..<3_060)
+    }
+
+    func testNoiseFloorCanFallAfterSpeechIsConfirmed() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.0015, chunks: 50, into: analyzer)
+        let elevatedThreshold = analyzer.latestSnapshot.threshold
+        for chunk in 0..<10 {
+            let level: Float = chunk.isMultiple(of: 2) ? 0.006 : 0.012
+            ingest(level: level, chunks: 1, into: analyzer)
+        }
+        ingest(level: 0.0004, chunks: 100, into: analyzer)
+
+        XCTAssertLessThan(analyzer.latestSnapshot.threshold, elevatedThreshold)
+        XCTAssertEqual(analyzer.assess().verdict, .usableSpeech)
     }
 
     func testTrailingSilenceDoesNotInvalidateDetectedSpeech() {
@@ -92,9 +194,15 @@ final class AudioActivityAnalyzerTests: XCTestCase {
         )
     }
 
-    private func ingest(level: Float, chunks: Int, into analyzer: AudioActivityAnalyzer) {
+    private func ingest(
+        level: Float,
+        chunks: Int,
+        frameCount: Int = 1_024,
+        sampleRate: Double = 16_000,
+        into analyzer: AudioActivityAnalyzer
+    ) {
         for _ in 0..<chunks {
-            analyzer.ingest(rmsLevel: level, frameCount: 1_024, sampleRate: 16_000)
+            analyzer.ingest(rmsLevel: level, frameCount: frameCount, sampleRate: sampleRate)
         }
     }
 

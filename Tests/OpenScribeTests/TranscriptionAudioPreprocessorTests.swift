@@ -16,8 +16,14 @@ final class TranscriptionAudioPreprocessorTests: XCTestCase {
         defer { prepared.cleanup() }
 
         XCTAssertNotEqual(prepared.fileURL, sourceURL)
+        XCTAssertEqual(prepared.fileURL.pathExtension, "m4a")
         let outputFile = try AVAudioFile(forReading: prepared.fileURL)
-        XCTAssertEqual(outputFile.length, 20_000, accuracy: 1)
+        let duration = Double(outputFile.length) / outputFile.processingFormat.sampleRate
+        XCTAssertEqual(duration, 1.25, accuracy: 0.1)
+        let outputSize = try XCTUnwrap(
+            try prepared.fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        )
+        XCTAssertLessThan(outputSize, 100_000)
     }
 
     func testPrepareUsesOriginalWhenSpeechRangeNeedsNoTrim() throws {

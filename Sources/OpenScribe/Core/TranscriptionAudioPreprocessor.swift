@@ -25,17 +25,26 @@ enum TranscriptionAudioPreprocessor {
             return PreparedTranscriptionAudio(fileURL: sourceURL, cleanupURL: nil)
         }
 
+        let identifier = UUID().uuidString
+        let pcmURL = fileManager.temporaryDirectory
+            .appendingPathComponent("openscribe-transcription-\(identifier).wav")
         let destinationURL = fileManager.temporaryDirectory
-            .appendingPathComponent("openscribe-transcription-\(UUID().uuidString).wav")
+            .appendingPathComponent("openscribe-transcription-\(identifier).m4a")
         do {
             try writeTrimmedPCM(
                 sourceURL: sourceURL,
-                destinationURL: destinationURL,
+                destinationURL: pcmURL,
                 startMs: range.lowerBound,
                 endMs: range.upperBound
             )
+            try AudioTranscoder.transcodeToM4A(
+                sourceWAVURL: pcmURL,
+                destinationURL: destinationURL
+            )
+            try? fileManager.removeItem(at: pcmURL)
             return PreparedTranscriptionAudio(fileURL: destinationURL, cleanupURL: destinationURL)
         } catch {
+            try? fileManager.removeItem(at: pcmURL)
             try? fileManager.removeItem(at: destinationURL)
             throw error
         }
