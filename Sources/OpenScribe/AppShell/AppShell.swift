@@ -748,6 +748,7 @@ final class AppShell: ObservableObject {
             return
         }
 
+        var pendingSession: SessionContext?
         do {
             rawTranscript = ""
             polishedTranscript = ""
@@ -763,7 +764,9 @@ final class AppShell: ObservableObject {
                 inputDeviceName: microphoneResolution.device?.name ?? systemDefaultMicrophoneName,
                 sampleRate: captureSampleRate
             )
+            pendingSession = session
             try sessionManager.transition(&session, to: .recording, details: "Audio capture started")
+            pendingSession = session
             let inputDeviceID = MicrophoneCaptureRouting.inputDeviceIDForCapture(
                 resolution: microphoneResolution,
                 systemDefaultDeviceID: systemDefaultMicrophoneID
@@ -775,10 +778,10 @@ final class AppShell: ObservableObject {
                     try await realtimeSession.connect()
                 }
             }
-            let onPCMChunk: (@Sendable (Data) -> Void)?
+            let onPCMChunk: (@Sendable (Data, Bool) -> Void)?
             if let realtimeAudioSender {
-                onPCMChunk = { data in
-                    realtimeAudioSender.append(data)
+                onPCMChunk = { data, isActive in
+                    realtimeAudioSender.append(data, isActive: isActive)
                 }
             } else {
                 onPCMChunk = nil
@@ -792,6 +795,7 @@ final class AppShell: ObservableObject {
                 onPCMChunk: onPCMChunk
             )
             currentSession = session
+            pendingSession = nil
             sessionMicrophoneOverrideID = nil
 
             sessionState = .recording
@@ -802,6 +806,10 @@ final class AppShell: ObservableObject {
             activeRealtimeAudioSender = nil
             await activeRealtimeTranscriptionSession?.cancel()
             activeRealtimeTranscriptionSession = nil
+            if var pendingSession {
+                sessionManager.recordFailure(&pendingSession, error: error.localizedDescription)
+                currentSession = pendingSession
+            }
             lastError = error.localizedDescription
             statusMessage = "Failed to start recording"
             sessionState = .failed
@@ -849,11 +857,19 @@ final class AppShell: ObservableObject {
             sessionState = .finalizingAudio
             try sessionManager.transition(&session, to: .finalizingAudio, details: "Stopping audio capture")
 
-            let audioActivity = audioCapture.stopRecording()
             let realtimeSession = activeRealtimeTranscriptionSession
             let realtimeAudioSender = activeRealtimeAudioSender
             activeRealtimeTranscriptionSession = nil
             activeRealtimeAudioSender = nil
+            let captureResult: AudioCaptureResult
+            do {
+                captureResult = try audioCapture.stopRecording()
+            } catch {
+                realtimeAudioSender?.cancel()
+                await realtimeSession?.cancel()
+                throw error
+            }
+            let audioActivity = captureResult.assessment
             try sessionManager.finalizeAudioFile(&session)
             try sessionManager.stopSession(&session)
             session.metadata.audioActivity = audioActivity
@@ -873,11 +889,25 @@ final class AppShell: ObservableObject {
 
             let transcript: TranscriptResult
             if let realtimeSession {
-                transcript = try await finishRealtimeTranscription(
-                    realtimeSession,
-                    audioSender: realtimeAudioSender,
-                    settings: settings
-                )
+                do {
+                    transcript = try await finishRealtimeTranscription(
+                        realtimeSession,
+                        audioSender: realtimeAudioSender,
+                        settings: settings
+                    )
+                } catch {
+                    statusMessage = "Realtime interrupted. Retrying saved audio."
+                    try sessionManager.transition(
+                        &session,
+                        to: .transcribing,
+                        details: "Realtime interrupted; retrying saved audio: \(error.localizedDescription)"
+                    )
+                    transcript = try await runTranscriptionWithRetry(
+                        audioFileURL: session.paths.audioURL,
+                        audioActivity: audioActivity,
+                        settings: settings
+                    )
+                }
             } else {
                 transcript = try await runTranscriptionWithRetry(
                     audioFileURL: session.paths.audioURL,
@@ -943,7 +973,9 @@ final class AppShell: ObservableObject {
             currentSession = session
             lastError = error.localizedDescription
             sessionState = .failed
-            if ProviderRetryPolicy.isProviderRelatedError(error) {
+            if error is AudioCaptureError {
+                statusMessage = "Audio capture failed. Check the microphone and try again."
+            } else if ProviderRetryPolicy.isProviderRelatedError(error) {
                 statusMessage = "Session failed. Check API key or switch provider/model, then retry."
             } else {
                 statusMessage = "Session failed"

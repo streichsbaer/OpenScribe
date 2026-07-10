@@ -246,6 +246,13 @@ actor OpenAIRealtimeTranscriptionSession {
 final class OpenAIRealtimeAudioSender: @unchecked Sendable {
     private let continuation: AsyncStream<Data>.Continuation
     private let task: Task<Void, Error>
+    private let stateLock = NSLock()
+    private let preRollByteLimit: Int
+    private let postRollByteLimit: Int
+    private var pendingEdgeChunks: [Data] = []
+    private var pendingEdgeByteCount = 0
+    private var hasDetectedSpeech = false
+    private var failure: RealtimeAudioSenderError?
 
     convenience init(session: OpenAIRealtimeTranscriptionSession) {
         self.init(onReady: {}, onSend: { data in
@@ -264,10 +271,12 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
 
     init(
         onReady: @escaping @Sendable () async throws -> Void = {},
-        onSend: @escaping @Sendable (Data) async throws -> Void
+        onSend: @escaping @Sendable (Data) async throws -> Void,
+        sampleRate: Int = 24_000,
+        maxBufferedChunks: Int = 512
     ) {
         var streamContinuation: AsyncStream<Data>.Continuation?
-        let stream = AsyncStream<Data> { continuation in
+        let stream = AsyncStream<Data>(bufferingPolicy: .bufferingOldest(max(1, maxBufferedChunks))) { continuation in
             streamContinuation = continuation
         }
         guard let streamContinuation else {
@@ -275,6 +284,8 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
         }
 
         self.continuation = streamContinuation
+        self.preRollByteLimit = max(0, Int(Double(sampleRate * 2) * 0.25))
+        self.postRollByteLimit = max(0, Int(Double(sampleRate * 2) * 0.50))
         self.task = Task {
             try await onReady()
             for await data in stream {
@@ -283,19 +294,113 @@ final class OpenAIRealtimeAudioSender: @unchecked Sendable {
         }
     }
 
-    func append(_ data: Data) {
+    func append(_ data: Data, isActive: Bool = true) {
         guard !data.isEmpty else { return }
-        continuation.yield(data)
+        let chunksToSend: [Data]
+        stateLock.lock()
+        if isActive {
+            hasDetectedSpeech = true
+            chunksToSend = pendingEdgeChunks + [data]
+            pendingEdgeChunks = []
+            pendingEdgeByteCount = 0
+        } else if hasDetectedSpeech {
+            appendPendingChunk(data, byteLimit: postRollByteLimit, keepNewest: false)
+            chunksToSend = []
+        } else {
+            appendPendingChunk(data, byteLimit: preRollByteLimit, keepNewest: true)
+            chunksToSend = []
+        }
+        stateLock.unlock()
+
+        for chunk in chunksToSend {
+            yield(chunk)
+        }
     }
 
     func finishSending() async throws {
+        let trailingChunks = stateLock.withLock {
+            let chunks = hasDetectedSpeech ? pendingEdgeChunks : []
+            pendingEdgeChunks = []
+            pendingEdgeByteCount = 0
+            return chunks
+        }
+
+        for chunk in trailingChunks {
+            yield(chunk)
+        }
         continuation.finish()
-        try await task.value
+        if let failure = currentFailure() {
+            task.cancel()
+            throw failure
+        }
+        do {
+            try await task.value
+        } catch {
+            if let failure = currentFailure() {
+                throw failure
+            }
+            throw error
+        }
     }
 
     func cancel() {
         continuation.finish()
         task.cancel()
+    }
+
+    private func appendPendingChunk(_ data: Data, byteLimit: Int, keepNewest: Bool) {
+        guard byteLimit > 0 else {
+            return
+        }
+
+        pendingEdgeChunks.append(data)
+        pendingEdgeByteCount += data.count
+        while pendingEdgeByteCount > byteLimit, !pendingEdgeChunks.isEmpty {
+            if keepNewest {
+                pendingEdgeByteCount -= pendingEdgeChunks.removeFirst().count
+            } else {
+                pendingEdgeByteCount -= pendingEdgeChunks.removeLast().count
+            }
+        }
+    }
+
+    private func yield(_ data: Data) {
+        switch continuation.yield(data) {
+        case .enqueued:
+            break
+        case .dropped:
+            recordFailure(.bufferOverflow)
+            continuation.finish()
+            task.cancel()
+        case .terminated:
+            break
+        @unknown default:
+            recordFailure(.bufferOverflow)
+            continuation.finish()
+            task.cancel()
+        }
+    }
+
+    private func recordFailure(_ value: RealtimeAudioSenderError) {
+        stateLock.lock()
+        if failure == nil {
+            failure = value
+        }
+        stateLock.unlock()
+    }
+
+    private func currentFailure() -> RealtimeAudioSenderError? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return failure
+    }
+}
+
+enum RealtimeAudioSenderError: Error, LocalizedError, Equatable {
+    case bufferOverflow
+
+    var errorDescription: String? {
+        "Realtime transcription fell behind audio capture. The saved recording can be retried."
     }
 }
 

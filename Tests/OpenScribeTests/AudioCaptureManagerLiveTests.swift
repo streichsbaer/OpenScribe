@@ -113,7 +113,7 @@ final class AudioCaptureManagerLiveTests: XCTestCase {
         }
 
         try await Task.sleep(for: .seconds(durationSeconds))
-        let assessment = manager.stopRecording()
+        let assessment = try manager.stopRecording().assessment
         let audioByteCount = (try? Data(contentsOf: tempURL).count) ?? 0
         return (assessment, audioByteCount)
     }

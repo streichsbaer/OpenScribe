@@ -9,12 +9,41 @@ enum MicrophonePermissionState {
     case undetermined
 }
 
+struct AudioCaptureResult {
+    let assessment: AudioActivityAssessment
+    let outputFrameCount: Int64
+}
+
+enum AudioCaptureError: Error, LocalizedError, Equatable, Sendable {
+    case conversionFailed(String)
+    case writeFailed(String)
+    case finalizationFailed(String)
+    case noOutputFrames
+
+    var errorDescription: String? {
+        switch self {
+        case .conversionFailed(let details):
+            return "Audio conversion failed: \(details)"
+        case .writeFailed(let details):
+            return "Audio capture could not be saved: \(details)"
+        case .finalizationFailed(let details):
+            return "Audio capture could not be finalized: \(details)"
+        case .noOutputFrames:
+            return "The microphone was active, but no audio frames were saved."
+        }
+    }
+}
+
 final class AudioCaptureManager {
     private var engine: AVAudioEngine?
     private var wavWriter: WavFileWriter?
     private var converter: AVAudioConverter?
     private var activityAnalyzer: AudioActivityAnalyzer?
-    private var onPCMChunk: (@Sendable (Data) -> Void)?
+    private var onPCMChunk: (@Sendable (Data, Bool) -> Void)?
+    private var outputFormat: AVAudioFormat?
+    private var captureTempURL: URL?
+    private let failureLock = NSLock()
+    private var captureFailure: AudioCaptureError?
 
     var onActivityUpdate: ((AudioActivitySnapshot) -> Void)?
 
@@ -40,9 +69,10 @@ final class AudioCaptureManager {
         to tempURL: URL,
         inputDeviceID: String?,
         sampleRate: Double = 16_000,
-        onPCMChunk: (@Sendable (Data) -> Void)? = nil
+        onPCMChunk: (@Sendable (Data, Bool) -> Void)? = nil
     ) throws {
-        teardownEngine()
+        cancelActiveCapture()
+        setCaptureFailure(nil)
 
         if FileManager.default.fileExists(atPath: tempURL.path) {
             try FileManager.default.removeItem(at: tempURL)
@@ -65,11 +95,18 @@ final class AudioCaptureManager {
             throw ProviderError.unsupported("Failed to prepare audio conversion for the selected microphone.")
         }
         self.converter = converter
-        wavWriter = try WavFileWriter(
-            url: tempURL,
-            sampleRate: Int(targetFormat.sampleRate),
-            channels: Int(targetFormat.channelCount)
-        )
+        self.outputFormat = targetFormat
+        captureTempURL = tempURL
+        do {
+            wavWriter = try WavFileWriter(
+                url: tempURL,
+                sampleRate: Int(targetFormat.sampleRate),
+                channels: Int(targetFormat.channelCount)
+            )
+        } catch {
+            cleanupCaptureResources(removeTemporaryFile: true)
+            throw error
+        }
         self.onPCMChunk = onPCMChunk
         activityAnalyzer = AudioActivityAnalyzer()
 
@@ -82,6 +119,9 @@ final class AudioCaptureManager {
         do {
             try freshEngine.start()
         } catch {
+            inputNode.removeTap(onBus: 0)
+            freshEngine.stop()
+            cleanupCaptureResources(removeTemporaryFile: true)
             let selectedInputDescription = inputDeviceID ?? "system default input"
             throw ProviderError.unsupported(
                 "Unable to start audio capture on \(selectedInputDescription): \(error.localizedDescription)"
@@ -90,18 +130,36 @@ final class AudioCaptureManager {
         engine = freshEngine
     }
 
-    func stopRecording() -> AudioActivityAssessment {
+    func stopRecording() throws -> AudioCaptureResult {
         teardownEngine()
 
-        try? wavWriter?.close()
-        wavWriter = nil
-        converter = nil
-        onPCMChunk = nil
         let assessment = activityAnalyzer?.assess() ?? .noData
-        activityAnalyzer = nil
+        do {
+            try flushConverter()
+        } catch let error as AudioCaptureError {
+            recordCaptureFailure(error)
+        } catch {
+            recordCaptureFailure(.conversionFailed(error.localizedDescription))
+        }
+
+        let outputFrameCount = wavWriter?.frameCount ?? 0
+        do {
+            try wavWriter?.close()
+        } catch {
+            recordCaptureFailure(.finalizationFailed(error.localizedDescription))
+        }
+        if assessment.totalDurationMs > 0, outputFrameCount == 0 {
+            recordCaptureFailure(.noOutputFrames)
+        }
+
+        let failure = currentCaptureFailure()
+        cleanupCaptureResources(removeTemporaryFile: false)
 
         onActivityUpdate?(.silence)
-        return assessment
+        if let failure {
+            throw failure
+        }
+        return AudioCaptureResult(assessment: assessment, outputFrameCount: outputFrameCount)
     }
 
     private func teardownEngine() {
@@ -111,6 +169,25 @@ final class AudioCaptureManager {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         self.engine = nil
+    }
+
+    private func cancelActiveCapture() {
+        teardownEngine()
+        try? wavWriter?.close()
+        cleanupCaptureResources(removeTemporaryFile: true)
+    }
+
+    private func cleanupCaptureResources(removeTemporaryFile: Bool) {
+        if removeTemporaryFile, let captureTempURL {
+            try? FileManager.default.removeItem(at: captureTempURL)
+        }
+        wavWriter = nil
+        converter = nil
+        outputFormat = nil
+        activityAnalyzer = nil
+        onPCMChunk = nil
+        captureTempURL = nil
+        setCaptureFailure(nil)
     }
 
     private func handle(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, outputFormat: AVAudioFormat) {
@@ -124,6 +201,10 @@ final class AudioCaptureManager {
             onActivityUpdate?(snapshot)
         }
 
+        guard currentCaptureFailure() == nil else {
+            return
+        }
+
         guard let converter = converter,
               let wavWriter = wavWriter else {
             return
@@ -133,6 +214,7 @@ final class AudioCaptureManager {
         let outputCapacity = AVAudioFrameCount(Double(buffer.frameLength) * frameRatio) + 64
 
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputCapacity) else {
+            recordCaptureFailure(.conversionFailed("Unable to allocate converted audio buffer."))
             return
         }
 
@@ -166,14 +248,77 @@ final class AudioCaptureManager {
         }
 
         if status == .error || error != nil {
+            recordCaptureFailure(.conversionFailed(error?.localizedDescription ?? "Unknown converter error."))
             return
         }
 
         if outputBuffer.frameLength > 0 {
-            if let pcmData = try? wavWriter.append(from: outputBuffer) {
-                onPCMChunk?(pcmData)
+            do {
+                let pcmData = try wavWriter.append(from: outputBuffer)
+                onPCMChunk?(pcmData, activityAnalyzer?.latestSnapshot.isActive ?? false)
+            } catch {
+                recordCaptureFailure(.writeFailed(error.localizedDescription))
             }
         }
+    }
+
+    private func flushConverter() throws {
+        guard let converter,
+              let outputFormat,
+              let wavWriter else {
+            return
+        }
+
+        while true {
+            guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: 4_096) else {
+                throw AudioCaptureError.conversionFailed("Unable to allocate final audio buffer.")
+            }
+
+            var conversionError: NSError?
+            let status = converter.convert(to: outputBuffer, error: &conversionError) { _, outStatus in
+                outStatus.pointee = .endOfStream
+                return nil
+            }
+
+            if status == .error || conversionError != nil {
+                throw AudioCaptureError.conversionFailed(
+                    conversionError?.localizedDescription ?? "Unable to flush the audio converter."
+                )
+            }
+
+            if outputBuffer.frameLength > 0 {
+                do {
+                    let pcmData = try wavWriter.append(from: outputBuffer)
+                    onPCMChunk?(pcmData, activityAnalyzer?.latestSnapshot.isActive ?? false)
+                } catch {
+                    throw AudioCaptureError.writeFailed(error.localizedDescription)
+                }
+            }
+
+            if status == .endOfStream || outputBuffer.frameLength == 0 {
+                return
+            }
+        }
+    }
+
+    private func recordCaptureFailure(_ failure: AudioCaptureError) {
+        failureLock.lock()
+        defer { failureLock.unlock() }
+        if captureFailure == nil {
+            captureFailure = failure
+        }
+    }
+
+    private func setCaptureFailure(_ failure: AudioCaptureError?) {
+        failureLock.lock()
+        captureFailure = failure
+        failureLock.unlock()
+    }
+
+    private func currentCaptureFailure() -> AudioCaptureError? {
+        failureLock.lock()
+        defer { failureLock.unlock() }
+        return captureFailure
     }
 
     private func configureInputDeviceIfNeeded(_ inputDeviceID: String?, on engine: AVAudioEngine) throws {
@@ -215,6 +360,14 @@ private final class WavFileWriter {
     private let sampleRate: UInt32
     private let channels: UInt16
     private var dataBytesWritten: UInt32 = 0
+
+    var frameCount: Int64 {
+        let bytesPerFrame = Int64(channels) * Int64(Self.bitsPerSample / 8)
+        guard bytesPerFrame > 0 else {
+            return 0
+        }
+        return Int64(dataBytesWritten) / bytesPerFrame
+    }
 
     init(url: URL, sampleRate: Int, channels: Int) throws {
         if FileManager.default.fileExists(atPath: url.path) {

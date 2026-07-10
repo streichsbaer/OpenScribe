@@ -76,6 +76,72 @@ final class OpenAIRealtimeTranscriptionProviderTests: XCTestCase {
             Data([0x03])
         ])
     }
+
+    func testRealtimeAudioSenderTrimsQuietEdgesWithProtectedPadding() async throws {
+        let recorder = RealtimeAudioSendRecorder()
+        let sender = OpenAIRealtimeAudioSender(
+            onSend: { data in
+                await recorder.append(data)
+            },
+            sampleRate: 4
+        )
+
+        sender.append(Data([0x01, 0x01]), isActive: false)
+        sender.append(Data([0x02, 0x02]), isActive: false)
+        sender.append(Data([0x03, 0x03]), isActive: true)
+        sender.append(Data([0x04, 0x04]), isActive: false)
+        sender.append(Data([0x05, 0x05]), isActive: false)
+        sender.append(Data([0x06, 0x06]), isActive: false)
+
+        try await sender.finishSending()
+
+        let chunks = await recorder.chunks
+        XCTAssertEqual(chunks, [
+            Data([0x02, 0x02]),
+            Data([0x03, 0x03]),
+            Data([0x04, 0x04]),
+            Data([0x05, 0x05])
+        ])
+    }
+
+    func testRealtimeAudioSenderDropsAllQuietRecording() async throws {
+        let recorder = RealtimeAudioSendRecorder()
+        let sender = OpenAIRealtimeAudioSender { data in
+            await recorder.append(data)
+        }
+
+        sender.append(Data([0x01]), isActive: false)
+        sender.append(Data([0x02]), isActive: false)
+        try await sender.finishSending()
+
+        let chunks = await recorder.chunks
+        XCTAssertEqual(chunks, [])
+    }
+
+    func testRealtimeAudioSenderFailsWhenNetworkBufferOverflows() async {
+        let gate = RealtimeAudioSendGate()
+        let sender = OpenAIRealtimeAudioSender(
+            onReady: {
+                await gate.waitUntilOpened()
+            },
+            onSend: { _ in },
+            maxBufferedChunks: 2
+        )
+
+        sender.append(Data([0x01]))
+        sender.append(Data([0x02]))
+        sender.append(Data([0x03]))
+
+        do {
+            try await sender.finishSending()
+            XCTFail("Expected realtime buffer overflow.")
+        } catch let error as RealtimeAudioSenderError {
+            XCTAssertEqual(error, .bufferOverflow)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        await gate.open()
+    }
 }
 
 private actor RealtimeAudioSendRecorder {

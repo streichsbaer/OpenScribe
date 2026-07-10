@@ -18,7 +18,7 @@ Roadmap execution lives in GitHub Issues and is summarized in [Roadmap](roadmap.
 5. Empty or near-empty recordings skip STT and polish, store empty transcript outputs, and end with actionable audio input guidance.
 6. For usable file-based recordings, OpenScribe creates a transient STT input trimmed to the detected speech span with protective leading and trailing padding. The original `audio.m4a` remains unchanged.
 7. File-based STT runs via the selected provider with the prepared input.
-8. OpenAI Realtime streams interim raw transcript text while recording, then commits the final transcript after stop.
+8. OpenAI Realtime keeps bounded leading and trailing audio buffers, streams interim raw transcript text while recording, and commits the final transcript after stop. If streaming falls behind or disconnects, OpenScribe retries from the saved recording.
 9. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
 10. If polish is disabled, polished output is passthrough from raw transcript.
 11. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
