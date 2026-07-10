@@ -14,13 +14,14 @@ Roadmap execution lives in GitHub Issues and is summarized in [Roadmap](roadmap.
 1. Global hotkey toggles recording.
 2. Audio is captured to `audio.capture.wav.part`.
 3. On stop, audio is finalized atomically to `audio.m4a`.
-4. Audio activity guard validates speech signal before provider calls.
-5. Empty or near-empty recordings skip STT and polish, store empty transcript outputs, and end with a `No audio captured` status.
-6. STT runs via selected provider when speech signal is usable.
-7. OpenAI Realtime streams interim raw transcript text while recording, then commits the final transcript after stop.
-8. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
-9. If polish is disabled, polished output is passthrough from raw transcript.
-10. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
+4. A shared adaptive audio activity detector validates speech signal and drives the live input indicators.
+5. Empty or near-empty recordings skip STT and polish, store empty transcript outputs, and end with actionable audio input guidance.
+6. For usable file-based recordings, OpenScribe creates a transient STT input trimmed to the detected speech span with protective leading and trailing padding. The original `audio.m4a` remains unchanged.
+7. File-based STT runs via the selected provider with the prepared input.
+8. OpenAI Realtime streams interim raw transcript text while recording, then commits the final transcript after stop.
+9. If polish is enabled, polish runs via selected LLM provider with `Rules/rules.md`.
+10. If polish is disabled, polished output is passthrough from raw transcript.
+11. Session artifacts are written: `audio.m4a`, `session.json`, `raw.txt`, `polished.md`.
 
 ## First-run setup assistant
 

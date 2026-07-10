@@ -30,6 +30,60 @@ final class AudioActivityAnalyzerTests: XCTestCase {
         XCTAssertGreaterThan(assessment.activeDurationMs, 150)
     }
 
+    func testReportsUsableSpeechForQuietSpeechSurroundedBySilence() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.0004, chunks: 20, into: analyzer)
+        ingest(level: 0.0030, chunks: 10, into: analyzer)
+        ingest(level: 0.0004, chunks: 20, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertEqual(assessment.speechStartMs, 1_280)
+        XCTAssertEqual(assessment.speechEndMs, 1_920)
+        XCTAssertEqual(assessment.transcriptionRange(), 1_030..<2_420)
+    }
+
+    func testReportsNoUsableSpeechForLowSteadyNoise() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.0012, chunks: 50, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .noUsableSpeech)
+        XCTAssertNil(assessment.transcriptionRange())
+    }
+
+    func testTrailingSilenceDoesNotInvalidateDetectedSpeech() {
+        let analyzer = AudioActivityAnalyzer()
+
+        ingest(level: 0.004, chunks: 10, into: analyzer)
+        ingest(level: 0.0004, chunks: 1_000, into: analyzer)
+
+        let assessment = analyzer.assess()
+
+        XCTAssertEqual(assessment.verdict, .usableSpeech, "Assessment reason: \(assessment.reason)")
+        XCTAssertLessThan(assessment.activeRatio, 0.02)
+        XCTAssertEqual(assessment.transcriptionRange(), 0..<1_140)
+    }
+
+    func testSnapshotUsesLogarithmicDBFSLevel() {
+        let analyzer = AudioActivityAnalyzer()
+
+        analyzer.ingest(rmsLevel: 0.01, frameCount: 1_024, sampleRate: 16_000)
+
+        XCTAssertEqual(analyzer.latestSnapshot.levelDBFS, -40, accuracy: 0.01)
+        XCTAssertTrue(analyzer.latestSnapshot.isActive)
+    }
+
+    private func ingest(level: Float, chunks: Int, into analyzer: AudioActivityAnalyzer) {
+        for _ in 0..<chunks {
+            analyzer.ingest(rmsLevel: level, frameCount: 1_024, sampleRate: 16_000)
+        }
+    }
+
     private func feedPCM16WAVSamples(from url: URL, into analyzer: AudioActivityAnalyzer) throws {
         let data = try Data(contentsOf: url)
         let bytes = [UInt8](data)

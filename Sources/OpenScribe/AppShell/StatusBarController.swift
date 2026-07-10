@@ -71,22 +71,15 @@ final class StatusBarController: NSObject {
     private var blinkPhase = false
     private var iconState: MicIconState = .idle
     private var currentMeterLevel: Float = 0
-    private var smoothedMeterLevel: Float = 0
+    private var currentLevelDBFS: Float = -80
+    private var currentActivityThreshold: Float = 0
+    private var currentNoiseFloor: Float = 0
     private var currentSessionState: SessionState = .idle
     private var currentPermissionState: MicrophonePermissionState = .undetermined
     private var lastDetectedActivityAt: Date?
-    private var noiseFloor: Float = 0.005
-    private var activityThreshold: Float = 0.020
-    private var instantActivityThreshold: Float = 0.012
     private var currentAppearanceMode: AppearanceMode = .system
     private var menubarIconDebug = "icon=idle"
 
-    private let smoothingAlpha: Float = 0.22
-    private let noiseFloorAlpha: Float = 0.08
-    private let minNoiseFloor: Float = 0.005
-    private let maxNoiseFloor: Float = 0.060
-    private let activityFloor: Float = 0.020
-    private let activityNoiseMultiplier: Float = 2.2
     private let activityHoldSeconds: TimeInterval = 0.35
     private let noAudioTimeoutSeconds: TimeInterval = 1.4
 
@@ -1134,20 +1127,17 @@ final class StatusBarController: NSObject {
     }
 
     private func bindShellState() {
-        shell.audioMeter.$level
+        shell.audioMeter.$snapshot
             .receive(on: RunLoop.main)
-            .sink { [weak self] level in
+            .sink { [weak self] snapshot in
                 guard let self else { return }
-                currentMeterLevel = level
-                smoothedMeterLevel = (smoothedMeterLevel == 0)
-                    ? level
-                    : ((1 - smoothingAlpha) * smoothedMeterLevel + smoothingAlpha * level)
+                currentMeterLevel = snapshot.rmsLevel
+                currentLevelDBFS = snapshot.levelDBFS
+                currentNoiseFloor = snapshot.noiseFloor
+                currentActivityThreshold = snapshot.threshold
 
-                if currentSessionState == .recording {
-                    updateNoiseFloor(using: smoothedMeterLevel)
-                    if currentMeterLevel >= instantActivityThreshold || smoothedMeterLevel >= activityThreshold {
-                        lastDetectedActivityAt = Date()
-                    }
+                if currentSessionState == .recording, snapshot.isActive {
+                    lastDetectedActivityAt = Date()
                 }
                 reevaluateMicIconState()
             }
@@ -1159,16 +1149,8 @@ final class StatusBarController: NSObject {
                 guard let self else { return }
                 if currentSessionState != .recording, state == .recording {
                     lastDetectedActivityAt = Date()
-                    smoothedMeterLevel = 0
-                    noiseFloor = minNoiseFloor
-                    activityThreshold = activityFloor
-                    instantActivityThreshold = 0.012
                 } else if state != .recording {
                     lastDetectedActivityAt = nil
-                    smoothedMeterLevel = 0
-                    noiseFloor = minNoiseFloor
-                    activityThreshold = activityFloor
-                    instantActivityThreshold = 0.012
                 }
                 currentSessionState = state
                 reevaluateMicIconState()
@@ -1541,27 +1523,14 @@ final class StatusBarController: NSObject {
         )
     }
 
-    private func updateNoiseFloor(using level: Float) {
-        let boundedLevel = min(max(0, level), maxNoiseFloor)
-        let floorUpdateCutoff = max(activityThreshold * 0.75, activityFloor)
-        if boundedLevel <= floorUpdateCutoff {
-            noiseFloor = ((1 - noiseFloorAlpha) * noiseFloor) + (noiseFloorAlpha * boundedLevel)
-            noiseFloor = min(max(noiseFloor, minNoiseFloor), maxNoiseFloor)
-        }
-
-        activityThreshold = max(activityFloor, noiseFloor * activityNoiseMultiplier)
-        instantActivityThreshold = max(0.012, min(0.020, activityThreshold * 0.7))
-    }
-
     private func publishDebug(silenceDuration: TimeInterval) {
         menubarIconDebug = String(
-            format: "icon=%@ raw=%.3f smooth=%.3f floor=%.3f instant=%.3f threshold=%.3f silence=%.1fs",
+            format: "icon=%@ raw=%.4f dbfs=%.1f floor=%.4f threshold=%.4f silence=%.1fs",
             iconStateLabel(iconState),
             currentMeterLevel,
-            smoothedMeterLevel,
-            noiseFloor,
-            instantActivityThreshold,
-            activityThreshold,
+            currentLevelDBFS,
+            currentNoiseFloor,
+            currentActivityThreshold,
             max(0, silenceDuration)
         )
     }

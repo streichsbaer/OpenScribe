@@ -1969,7 +1969,7 @@ private struct AudioLevelIndicatorView: View {
     private var fillColor: Color {
         switch permissionState {
         case .authorized:
-            return audioMeter.level > 0.01 ? .green : .gray
+            return audioMeter.snapshot.isActive ? .green : .gray
         case .denied, .undetermined:
             return .gray
         }
@@ -1989,10 +1989,17 @@ private struct AudioLevelIndicatorView: View {
 
                 Capsule()
                     .fill(fillColor)
-                    .frame(width: max(4, CGFloat(audioMeter.level) * trackWidth))
+                    .frame(width: max(4, normalizedMeterLevel * trackWidth))
             }
             .frame(width: trackWidth, height: trackHeight)
         }
+    }
+
+    private var normalizedMeterLevel: CGFloat {
+        let minimumDBFS: Float = -60
+        let maximumDBFS: Float = -6
+        let bounded = min(max(audioMeter.snapshot.levelDBFS, minimumDBFS), maximumDBFS)
+        return CGFloat((bounded - minimumDBFS) / (maximumDBFS - minimumDBFS))
     }
 }
 

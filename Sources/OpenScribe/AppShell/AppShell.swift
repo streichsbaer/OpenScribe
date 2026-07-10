@@ -240,9 +240,9 @@ final class AppShell: ObservableObject {
         self.geminiKeyInput = keychainStore.load(.gemini) ?? ""
         self.cerebrasKeyInput = keychainStore.load(.cerebras) ?? ""
 
-        audioCapture.onLevelUpdate = { [audioMeter] level in
+        audioCapture.onActivityUpdate = { [audioMeter] snapshot in
             Task { @MainActor in
-                audioMeter.level = level
+                audioMeter.snapshot = snapshot
             }
         }
         microphoneCatalog.onSnapshotChange = { [weak self] snapshot in
@@ -879,7 +879,11 @@ final class AppShell: ObservableObject {
                     settings: settings
                 )
             } else {
-                transcript = try await runTranscriptionWithRetry(audioFileURL: session.paths.audioURL, settings: settings)
+                transcript = try await runTranscriptionWithRetry(
+                    audioFileURL: session.paths.audioURL,
+                    audioActivity: audioActivity,
+                    settings: settings
+                )
             }
             let transcribeProcessingMs = transcribeElapsedMs()
             endTranscribeProgressTracking()
@@ -1060,7 +1064,11 @@ final class AppShell: ObservableObject {
                 self.beginTranscribeProgressTracking()
                 try self.sessionManager.transition(&session, to: .transcribing, details: "Retry transcription")
 
-                let transcript = try await self.runTranscriptionWithRetry(audioFileURL: session.paths.audioURL, settings: retrySettings)
+                let transcript = try await self.runTranscriptionWithRetry(
+                    audioFileURL: session.paths.audioURL,
+                    audioActivity: session.metadata.audioActivity,
+                    settings: retrySettings
+                )
                 let transcribeProcessingMs = self.transcribeElapsedMs()
                 self.endTranscribeProgressTracking()
                 self.rawTranscript = transcript.text
@@ -1903,10 +1911,17 @@ final class AppShell: ObservableObject {
 
     private func runTranscriptionWithRetry(
         audioFileURL: URL,
+        audioActivity: AudioActivityAssessment?,
         settings: AppSettings
     ) async throws -> TranscriptResult {
-        try await ProviderRetryPolicy.run {
-            try await self.transcriptionPipeline.run(audioFileURL: audioFileURL, settings: settings)
+        let preparedAudio = try TranscriptionAudioPreprocessor.prepare(
+            sourceURL: audioFileURL,
+            assessment: audioActivity
+        )
+        defer { preparedAudio.cleanup() }
+
+        return try await ProviderRetryPolicy.run {
+            try await self.transcriptionPipeline.run(audioFileURL: preparedAudio.fileURL, settings: settings)
         }
     }
 

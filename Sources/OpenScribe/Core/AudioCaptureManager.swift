@@ -16,7 +16,7 @@ final class AudioCaptureManager {
     private var activityAnalyzer: AudioActivityAnalyzer?
     private var onPCMChunk: (@Sendable (Data) -> Void)?
 
-    var onLevelUpdate: ((Float) -> Void)?
+    var onActivityUpdate: ((AudioActivitySnapshot) -> Void)?
 
     func permissionState() -> MicrophonePermissionState {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
@@ -100,7 +100,7 @@ final class AudioCaptureManager {
         let assessment = activityAnalyzer?.assess() ?? .noData
         activityAnalyzer = nil
 
-        onLevelUpdate?(0)
+        onActivityUpdate?(.silence)
         return assessment
     }
 
@@ -120,7 +120,9 @@ final class AudioCaptureManager {
             frameCount: Int(buffer.frameLength),
             sampleRate: inputFormat.sampleRate
         )
-        onLevelUpdate?(level)
+        if let snapshot = activityAnalyzer?.latestSnapshot {
+            onActivityUpdate?(snapshot)
+        }
 
         guard let converter = converter,
               let wavWriter = wavWriter else {

@@ -18,7 +18,9 @@ After recording stops, OpenScribe sends the audio through your selected speech-t
 
 The raw transcript appears in the Live tab as soon as transcription completes. With OpenAI Realtime, the final transcript is committed after recording stops, even if interim text was already visible while you were speaking.
 
-If the recording had no usable speech signal, OpenScribe skips transcription and shows a "No audio captured" status.
+OpenScribe uses the same adaptive speech detector for the live input indicators and the final recording check. Quiet speech can remain usable even when it produces a small meter movement.
+
+If the recording has no usable speech signal, OpenScribe skips transcription and shows audio input guidance. For usable file-based recordings, it sends providers a temporary copy trimmed around the detected speech with a small amount of protected audio before and after it. The original session recording remains unchanged.
 
 ## 3. Polish if you want cleanup
 
