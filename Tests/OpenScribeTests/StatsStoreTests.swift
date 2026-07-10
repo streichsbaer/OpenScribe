@@ -457,6 +457,43 @@ final class StatsStoreTests: XCTestCase {
         XCTAssertNil(summary.weeklyTrend)
     }
 
+    func testCachedLedgerInvalidatesWhenAnotherStoreAppends() throws {
+        let layout = try makeTempLayout()
+        let firstStore = StatsStore(layout: layout)
+        let secondStore = StatsStore(layout: layout)
+
+        try firstStore.append(makeTranscriptionEvent(words: 40))
+        XCTAssertEqual(firstStore.loadSummary().spokenWords, 40)
+
+        try secondStore.append(makeTranscriptionEvent(words: 60))
+
+        let refreshed = firstStore.loadSummary()
+        XCTAssertEqual(refreshed.totalEvents, 2)
+        XCTAssertEqual(refreshed.spokenWords, 100)
+    }
+
+    private func makeTranscriptionEvent(words: Double) -> StatsEvent {
+        StatsEvent(
+            id: UUID(),
+            sessionId: UUID(),
+            timestamp: Date(),
+            stage: .transcription,
+            providerId: "groq_whisper",
+            model: "whisper-large-v3-turbo",
+            inputUnits: 30,
+            outputUnits: words,
+            inputUnit: .audioSeconds,
+            outputUnit: .words,
+            inputTokens: nil,
+            outputTokens: nil,
+            recordingDurationMs: 30_000,
+            wordsPerMinute: nil,
+            wordDelta: nil,
+            wordDeltaPercent: nil,
+            processingDurationMs: nil
+        )
+    }
+
     private func makeTempLayout() throws -> DirectoryLayout {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("OpenScribeStatsTests-\(UUID().uuidString)", isDirectory: true)

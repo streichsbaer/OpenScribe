@@ -118,8 +118,15 @@ struct StatsSummary: Equatable {
 }
 
 final class StatsStore {
+    private struct EventsFileState: Equatable {
+        let size: Int
+        let modificationDate: Date?
+    }
+
     private let eventsURL: URL
     private let fileManager: FileManager
+    private var cachedEvents: [StatsEvent]?
+    private var cachedFileState: EventsFileState?
 
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -143,15 +150,25 @@ final class StatsStore {
         var line = try Self.encoder.encode(event)
         line.append(0x0A)
 
-        if fileManager.fileExists(atPath: eventsURL.path),
-           let handle = try? FileHandle(forWritingTo: eventsURL) {
+        let stateBeforeAppend = eventsFileState()
+        let canExtendCache = cachedEvents != nil && cachedFileState == stateBeforeAppend
+
+        if fileManager.fileExists(atPath: eventsURL.path) {
+            let handle = try FileHandle(forWritingTo: eventsURL)
             defer { try? handle.close() }
             _ = try handle.seekToEnd()
             try handle.write(contentsOf: line)
-            return
+        } else {
+            try line.write(to: eventsURL, options: .atomic)
         }
 
-        try line.write(to: eventsURL, options: .atomic)
+        if canExtendCache {
+            cachedEvents?.append(event)
+            cachedFileState = eventsFileState()
+        } else {
+            cachedEvents = nil
+            cachedFileState = nil
+        }
     }
 
     func loadSummary() -> StatsSummary {
@@ -369,19 +386,35 @@ final class StatsStore {
     }
 
     private func loadEvents() -> [StatsEvent] {
-        guard fileManager.fileExists(atPath: eventsURL.path),
-              let content = try? String(contentsOf: eventsURL, encoding: .utf8) else {
+        let currentState = eventsFileState()
+        if let cachedEvents, cachedFileState == currentState {
+            return cachedEvents
+        }
+
+        guard currentState != nil,
+              let content = try? Data(contentsOf: eventsURL) else {
+            cachedEvents = []
+            cachedFileState = nil
             return []
         }
 
-        return content
-            .split(whereSeparator: \.isNewline)
+        let events = content
+            .split(separator: 0x0A)
             .compactMap { line in
-                guard let data = String(line).data(using: .utf8) else {
-                    return nil
-                }
-                return try? Self.decoder.decode(StatsEvent.self, from: data)
+                try? Self.decoder.decode(StatsEvent.self, from: Data(line))
             }
+        cachedEvents = events
+        cachedFileState = currentState
+        return events
+    }
+
+    private func eventsFileState() -> EventsFileState? {
+        guard fileManager.fileExists(atPath: eventsURL.path),
+              let attributes = try? fileManager.attributesOfItem(atPath: eventsURL.path),
+              let size = (attributes[.size] as? NSNumber)?.intValue else {
+            return nil
+        }
+        return EventsFileState(size: size, modificationDate: attributes[.modificationDate] as? Date)
     }
 
     private func summarizeProviderUsage(_ events: [StatsEvent]) -> [StatsProviderUsage] {
